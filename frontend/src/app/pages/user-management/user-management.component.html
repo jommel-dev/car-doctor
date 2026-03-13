@@ -1,0 +1,72 @@
+<div>
+  <app-page-breadcrumb pageTitle="User Management" />
+
+  <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] xl:p-6">
+    <div class="mb-4 flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Users</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Manage user accounts, roles, and access.</p>
+      </div>
+
+      <app-button
+        *appCan="{ menu: 'user_management', permission: 'canCreate' }"
+        size="sm"
+      >
+        Add User
+      </app-button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[700px]">
+        <thead>
+          <tr class="border-b border-gray-200 dark:border-gray-800">
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Username</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Full Name</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Role</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Status</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of users; track user.id) {
+            <tr class="border-b border-gray-100 dark:border-gray-800/70">
+              <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.username }}</td>
+              <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.fullName }}</td>
+              <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.role }}</td>
+              <td class="px-4 py-3">
+                <span
+                  class="rounded-full px-2 py-0.5 text-xs font-medium"
+                  [ngClass]="{
+                    'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-500': user.status === 'Active',
+                    'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-500': user.status === 'Inactive'
+                  }"
+                >
+                  {{ user.status }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <app-button
+                    *appCan="{ menu: 'user_management', permission: 'canUpdate' }"
+                    size="sm"
+                    variant="outline"
+                  >
+                    Edit
+                  </app-button>
+
+                  <app-button
+                    *appCan="{ menu: 'user_management', permission: 'canDelete' }"
+                    size="sm"
+                    variant="outline"
+                  >
+                    Delete
+                  </app-button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

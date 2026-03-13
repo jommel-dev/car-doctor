@@ -1,0 +1,231 @@
+<div class="space-y-6">
+	<div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+		<div class="flex items-center justify-between">
+			<h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Job Orders</h2>
+			<button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openModal()">New Job Order</button>
+		</div>
+	</div>
+
+	@if (errorMessage) {
+		<div class="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600">{{ errorMessage }}</div>
+	}
+
+	@if (successMessage) {
+		<div class="rounded-lg border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700">{{ successMessage }}</div>
+	}
+
+	<div class="rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-white/[0.03]">
+		<div class="flex flex-wrap gap-2">
+			<button type="button" class="rounded-lg px-3 py-2 text-sm" [class.bg-brand-500]="statusFilter === 'ALL'" [class.text-white]="statusFilter === 'ALL'" [class.border]="statusFilter !== 'ALL'" (click)="setStatusFilter('ALL')">All</button>
+			<button type="button" class="rounded-lg px-3 py-2 text-sm" [class.bg-brand-500]="statusFilter === 'PENDING'" [class.text-white]="statusFilter === 'PENDING'" [class.border]="statusFilter !== 'PENDING'" (click)="setStatusFilter('PENDING')">Pending</button>
+			<button type="button" class="rounded-lg px-3 py-2 text-sm" [class.bg-brand-500]="statusFilter === 'IN_PROGRESS'" [class.text-white]="statusFilter === 'IN_PROGRESS'" [class.border]="statusFilter !== 'IN_PROGRESS'" (click)="setStatusFilter('IN_PROGRESS')">In Progress</button>
+			<button type="button" class="rounded-lg px-3 py-2 text-sm" [class.bg-brand-500]="statusFilter === 'FOR_PAYMENT'" [class.text-white]="statusFilter === 'FOR_PAYMENT'" [class.border]="statusFilter !== 'FOR_PAYMENT'" (click)="setStatusFilter('FOR_PAYMENT')">For Payment</button>
+			<button type="button" class="rounded-lg px-3 py-2 text-sm" [class.bg-brand-500]="statusFilter === 'COMPLETED'" [class.text-white]="statusFilter === 'COMPLETED'" [class.border]="statusFilter !== 'COMPLETED'" (click)="setStatusFilter('COMPLETED')">Completed</button>
+		</div>
+	</div>
+
+	<div class="rounded-2xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-white/[0.03]">
+		<table class="min-w-full text-sm">
+			<thead class="text-left text-xs text-gray-500">
+				<tr>
+					<th class="px-4 py-3">Vehicle</th>
+					<th class="px-4 py-3">Customer</th>
+					<th class="px-4 py-3">Concern / Inspection</th>
+					<th class="px-4 py-3">Status</th>
+					<th class="px-4 py-3">Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				@if (isLoading) {
+					<tr><td colspan="5" class="px-4 py-4">Loading...</td></tr>
+				} @else if (getDisplayedJobOrders().length===0) {
+					<tr><td colspan="5" class="px-4 py-4">No job orders.</td></tr>
+				} @else {
+					@for (job of getDisplayedJobOrders(); track job.id) {
+						<tr class="border-t border-gray-100 dark:border-gray-800">
+							<td class="px-4 py-3">{{ getVehicleLabel(job) }}</td>
+							<td class="px-4 py-3">{{ getCustomerName(job) }}</td>
+							<td class="px-4 py-3">{{ job.description || '-' }}</td>
+							<td class="px-4 py-3">
+								<span class="inline-flex rounded-full border px-2 py-1 text-xs font-medium" [class]="'inline-flex rounded-full border px-2 py-1 text-xs font-medium ' + getStatusBadgeClass(job.status)">
+									{{ getStatusLabel(job.status) }}
+								</span>
+							</td>
+							<td class="px-4 py-3">
+								<button type="button" class="rounded-lg border border-gray-300 px-3 py-1 text-xs" (click)="openJobOrderDrawer(job)">
+									View / Update
+								</button>
+							</td>
+						</tr>
+					}
+				}
+			</tbody>
+		</table>
+	</div>
+
+	@if (showModal) {
+		<div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()">
+			<form class="w-full max-w-4xl rounded-2xl bg-white p-6 dark:bg-gray-900" (submit)="createJobOrder($event)" (click)="$event.stopPropagation()">
+				<h3 class="text-lg font-semibold">Create Job Order</h3>
+
+				<div class="mt-4 space-y-4">
+					<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+						<p class="text-xs font-medium uppercase text-gray-500">Step 1: Search Vehicle by Plate Number</p>
+						<div class="mt-3 flex gap-2">
+							<input
+								name="plateNumber"
+								class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700"
+								placeholder="Enter plate number"
+								[value]="plateSearchInput"
+								(input)="plateSearchInput = $any($event.target).value"
+							>
+							<button type="button" class="h-11 rounded-lg bg-brand-500 px-4 text-sm text-white" (click)="searchPlateNumber()">Search</button>
+						</div>
+
+						@if (plateSearchStatus === 'found') {
+							<div class="mt-3 rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-700">
+								Existing plate number found. Customer and vehicle details are loaded.
+							</div>
+						} @else if (plateSearchStatus === 'not-found') {
+							<div class="mt-3 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-700">
+								This is a new plate number with no record. Please fill in customer details, vehicle details, and vehicle concern/inspection manually.
+							</div>
+						}
+					</div>
+
+					@if (plateSearchStatus === 'found') {
+						<div class="grid gap-4 md:grid-cols-2">
+							<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+								<p class="text-xs font-medium uppercase text-gray-500">Customer Details</p>
+								<div class="mt-3 grid gap-3">
+									<input class="h-11 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm dark:border-gray-700" [value]="selectedCustomer?.name || '-'" readonly>
+									<input class="h-11 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm dark:border-gray-700" [value]="selectedCustomer?.contactInfo || '-'" readonly>
+								</div>
+							</div>
+
+							<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+								<p class="text-xs font-medium uppercase text-gray-500">Vehicle Details</p>
+								<div class="mt-3 grid gap-3">
+									<input class="h-11 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm dark:border-gray-700" [value]="selectedVehicle?.make || '-'" readonly>
+									<input class="h-11 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm dark:border-gray-700" [value]="selectedVehicle?.model || '-'" readonly>
+									<input class="h-11 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm dark:border-gray-700" [value]="selectedVehicle?.engineInfo || '-'" readonly>
+									<input class="h-11 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm dark:border-gray-700" [value]="selectedVehicle?.chassisInfo || '-'" readonly>
+								</div>
+							</div>
+						</div>
+					}
+
+					@if (plateSearchStatus === 'not-found') {
+						<div class="grid gap-4 md:grid-cols-2">
+							<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+								<p class="text-xs font-medium uppercase text-gray-500">Customer Details</p>
+								<div class="mt-3 grid gap-3">
+									<input name="customerName" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Customer name" required>
+									<input name="customerContactInfo" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Customer contact info">
+								</div>
+							</div>
+
+							<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+								<p class="text-xs font-medium uppercase text-gray-500">Vehicle Details</p>
+								<div class="mt-3 grid gap-3">
+									<input name="make" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Make" required>
+									<input name="model" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Model" required>
+									<input name="engineInfo" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Engine Info">
+									<input name="chassisInfo" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Chassis Info">
+								</div>
+							</div>
+						</div>
+					}
+
+					<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+						<p class="text-xs font-medium uppercase text-gray-500">Vehicle Concern / Inspection</p>
+						<textarea name="description" class="mt-3 min-h-24 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700" placeholder="Enter concern and inspection details" required></textarea>
+					</div>
+				</div>
+
+				<div class="mt-5 flex justify-end gap-2">
+					<button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button>
+					<button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" [disabled]="isSubmitting">{{ isSubmitting ? 'Saving...' : 'Create Job Order' }}</button>
+				</div>
+			</form>
+		</div>
+	}
+
+	@if (showDrawer && selectedJobOrder) {
+		<div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()">
+			<div class="w-full max-w-3xl rounded-2xl bg-white p-6 dark:bg-gray-900" (click)="$event.stopPropagation()">
+				<div class="flex items-center justify-between gap-3">
+					<div>
+						<h3 class="text-lg font-semibold">Job Order Details</h3>
+						<p class="text-sm text-gray-500">{{ getVehicleLabel(selectedJobOrder) }} • {{ getCustomerName(selectedJobOrder) }}</p>
+					</div>
+					<span class="rounded-full border px-3 py-1 text-xs" [class]="'rounded-full border px-3 py-1 text-xs ' + getStatusBadgeClass(selectedJobOrder.status)">{{ getStatusLabel(selectedJobOrder.status) }}</span>
+				</div>
+
+				<form class="mt-4 space-y-4" (submit)="saveJobOrderProgress($event)">
+					<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+						<p class="text-xs font-medium uppercase text-gray-500">Vehicle Concern / Inspection</p>
+						<p class="mt-2 text-sm text-gray-700 dark:text-gray-200">{{ selectedJobOrder.description || '-' }}</p>
+					</div>
+
+					<div class="grid gap-4 md:grid-cols-2">
+						<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 md:col-span-2">
+							<label class="mb-2 block text-xs font-medium uppercase text-gray-500">Jobs Done</label>
+							<textarea class="min-h-20 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700" placeholder="Enter completed work details" [value]="jobsDoneInput" (input)="jobsDoneInput = $any($event.target).value"></textarea>
+						</div>
+
+						<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+							<label class="mb-2 block text-xs font-medium uppercase text-gray-500">Remarks</label>
+							<textarea class="min-h-20 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700" placeholder="Enter service remarks" [value]="remarksInput" (input)="remarksInput = $any($event.target).value"></textarea>
+						</div>
+
+						<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+							<label class="mb-2 block text-xs font-medium uppercase text-gray-500">Additional Items Used</label>
+							<input class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Example: Bearing, Oil" [value]="additionalItemsInput" (input)="additionalItemsInput = $any($event.target).value">
+						</div>
+					</div>
+
+					<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+						<p class="text-xs font-medium uppercase text-gray-500">Progress History</p>
+						<div class="mt-3 overflow-x-auto">
+							<table class="min-w-full text-sm">
+								<thead class="text-left text-xs text-gray-500">
+									<tr>
+										<th class="px-3 py-2">Date</th>
+										<th class="px-3 py-2">Jobs Done / Remarks</th>
+										<th class="px-3 py-2">Additional Items</th>
+									</tr>
+								</thead>
+								<tbody>
+									@if (getProgressHistory(selectedJobOrder).length === 0) {
+										<tr>
+											<td colspan="3" class="px-3 py-3 text-gray-500">No progress updates yet.</td>
+										</tr>
+									} @else {
+										@for (record of getProgressHistory(selectedJobOrder); track record.id) {
+											<tr class="border-t border-gray-100 dark:border-gray-800">
+												<td class="px-3 py-2">{{ formatDateTime(record.serviceDate) }}</td>
+												<td class="px-3 py-2 whitespace-pre-line">{{ record.notes || '-' }}</td>
+												<td class="px-3 py-2">{{ record.partsReplaced || '-' }}</td>
+											</tr>
+										}
+									}
+								</tbody>
+							</table>
+						</div>
+					</div>
+
+					<div class="flex flex-wrap justify-end gap-2">
+						<button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Close</button>
+						@if (canUpdateProgress(selectedJobOrder)) {
+							<button type="submit" class="rounded-lg border border-brand-500 px-4 py-2 text-sm text-brand-600" [disabled]="isUpdatingJobOrder">{{ isUpdatingJobOrder ? 'Saving...' : 'Save Progress' }}</button>
+						}
+						@if (canMoveToCashier(selectedJobOrder)) {
+							<button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" [disabled]="isUpdatingJobOrder" (click)="moveToCashier()">Move to Cashier for Payment</button>
+						}
+					</div>
+				</form>
+			</div>
+		</div>
+	}
+</div>

@@ -1,0 +1,68 @@
+<div class="space-y-6">
+  <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Customer Management</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Live customer records from API.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="openDrawer()">Quick View</button>
+        <button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openModal()">Add Customer</button>
+      </div>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <div class="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600">{{ errorMessage }}</div>
+  }
+
+  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-left text-sm">
+        <thead class="border-b border-gray-200 text-xs text-gray-500 dark:border-gray-800">
+          <tr><th class="px-6 py-3">Name</th><th class="px-6 py-3">Contact</th><th class="px-6 py-3">Created</th></tr>
+        </thead>
+        <tbody>
+          @if (isLoading) {
+            <tr><td colspan="3" class="px-6 py-4 text-gray-500">Loading...</td></tr>
+          } @else if (customers.length === 0) {
+            <tr><td colspan="3" class="px-6 py-4 text-gray-500">No customers found.</td></tr>
+          } @else {
+            @for (customer of customers; track customer.id) {
+              <tr class="border-b border-gray-100 dark:border-gray-800/60">
+                <td class="px-6 py-3 text-gray-800 dark:text-white/90">{{ customer.name }}</td>
+                <td class="px-6 py-3 text-gray-500">{{ customer.contactInfo || '-' }}</td>
+                <td class="px-6 py-3 text-gray-500">{{ customer.createdAt || '-' }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  @if (showModal) {
+    <div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()">
+      <form class="w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-gray-900" (submit)="createCustomer($event)" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Create Customer</h3>
+        <div class="mt-4 grid gap-3">
+          <input name="name" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Full name" required>
+          <input name="contactInfo" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Contact number or email">
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button>
+          <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">Save</button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (showDrawer) {
+    <div class="fixed inset-0 app-layer bg-gray-900/40" (click)="closePanels()"></div>
+    <aside class="fixed right-0 top-0 app-layer h-full w-full max-w-md border-l border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+      <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Customer Quick View</h3>
+      <p class="mt-3 text-sm text-gray-500">Total records: {{ customers.length }}</p>
+      <button class="mt-6 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Close</button>
+    </aside>
+  }
+</div>

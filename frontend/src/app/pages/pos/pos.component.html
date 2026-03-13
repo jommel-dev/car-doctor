@@ -1,0 +1,120 @@
+<div class="space-y-6">
+	<div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+		<div class="flex items-center justify-between">
+			<h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Point of Sale</h2>
+			<button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openModal()" [disabled]="jobOrders.length === 0">New Sale</button>
+		</div>
+		<p class="mt-2 text-sm text-gray-500">Ready for payment job orders: {{ jobOrders.length }}</p>
+	</div>
+
+	@if (errorMessage) {
+		<div class="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600">{{ errorMessage }}</div>
+	}
+
+	@if (successMessage) {
+		<div class="rounded-lg border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700">{{ successMessage }}</div>
+	}
+
+	<div class="rounded-2xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-white/[0.03]">
+		<div class="px-4 py-3 text-xs text-gray-500">Cashier Queue (For Payment)</div>
+		<table class="min-w-full text-sm">
+			<thead class="text-left text-xs text-gray-500">
+				<tr>
+					<th class="px-4 py-3">Job Order</th>
+					<th class="px-4 py-3">Concern</th>
+					<th class="px-4 py-3">Action</th>
+				</tr>
+			</thead>
+			<tbody>
+				@if (jobOrders.length===0) {
+					<tr><td colspan="3" class="px-4 py-4">No job orders waiting for payment.</td></tr>
+				} @else {
+					@for (jobOrder of jobOrders; track jobOrder.id) {
+						<tr class="border-t border-gray-100 dark:border-gray-800">
+							<td class="px-4 py-3">{{ getJobOrderLabel(jobOrder) }}</td>
+							<td class="px-4 py-3">{{ jobOrder.description || '-' }}</td>
+							<td class="px-4 py-3">
+								<button type="button" class="rounded-lg border border-gray-300 px-3 py-1 text-xs" (click)="openModalForJobOrder(jobOrder.id)">Pay Now</button>
+							</td>
+						</tr>
+					}
+				}
+			</tbody>
+		</table>
+	</div>
+
+	<div class="rounded-2xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-white/[0.03]">
+		<table class="min-w-full text-sm">
+			<thead class="text-left text-xs text-gray-500">
+				<tr>
+					<th class="px-4 py-3">ID</th>
+					<th class="px-4 py-3">Job Order</th>
+					<th class="px-4 py-3">Customer</th>
+					<th class="px-4 py-3">Item Used</th>
+					<th class="px-4 py-3">Invoice</th>
+					<th class="px-4 py-3">Amount</th>
+					<th class="px-4 py-3">Date</th>
+				</tr>
+			</thead>
+			<tbody>
+				@if (isLoading) {
+					<tr><td colspan="7" class="px-4 py-4">Loading...</td></tr>
+				} @else if (sales.length===0) {
+					<tr><td colspan="7" class="px-4 py-4">No sales yet.</td></tr>
+				} @else {
+					@for (sale of sales; track sale.id) {
+						<tr class="border-t border-gray-100 dark:border-gray-800">
+							<td class="px-4 py-3">{{ sale.id }}</td>
+							<td class="px-4 py-3">{{ getSaleJobOrderLabel(sale) }}</td>
+							<td class="px-4 py-3">{{ getSaleCustomerLabel(sale) }}</td>
+							<td class="px-4 py-3">{{ getSaleInventoryLabel(sale) }}</td>
+							<td class="px-4 py-3">{{ getSaleInvoiceLabel(sale) }}</td>
+							<td class="px-4 py-3">{{ sale.amount }}</td>
+							<td class="px-4 py-3">{{ formatDateTime(sale.createdAt) }}</td>
+						</tr>
+					}
+				}
+			</tbody>
+		</table>
+	</div>
+
+	@if (showModal) {
+		<div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()">
+			<form class="w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-gray-900" (submit)="createSale($event)" (click)="$event.stopPropagation()">
+				<h3 class="text-lg font-semibold">Checkout</h3>
+
+				@if (jobOrders.length === 0) {
+					<div class="mt-4 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700">
+						No job orders are ready for payment. Move a job order to "For Payment" first.
+					</div>
+				}
+
+				<div class="mt-4 grid gap-3">
+					<select name="jobOrderId" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="selectedJobOrderId || ''" (change)="updateSelectedJobOrder($any($event.target).value)" [disabled]="jobOrders.length === 0 || isSubmitting" required>
+						@for (jobOrder of jobOrders; track jobOrder.id) {
+							<option [value]="jobOrder.id">{{ getJobOrderLabel(jobOrder) }}</option>
+						}
+					</select>
+					<select name="inventoryId" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [disabled]="isSubmitting">
+						<option value="">No inventory item</option>
+						@for (item of inventoryItems; track item.id) {
+							<option [value]="item.id">{{ item.partName }} (#{{ item.id }})</option>
+						}
+					</select>
+					<select name="invoiceId" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [disabled]="isSubmitting">
+						<option value="">No invoice</option>
+						@for (invoice of getAvailableInvoices(); track invoice.id) {
+							<option [value]="invoice.id">INV-{{ invoice.id }}</option>
+						}
+					</select>
+					<input name="amount" type="number" min="0.01" step="0.01" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Amount" [disabled]="isSubmitting" required>
+				</div>
+
+				<div class="mt-5 flex justify-end gap-2">
+					<button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button>
+					<button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" [disabled]="jobOrders.length === 0 || isSubmitting">{{ isSubmitting ? 'Processing...' : 'Checkout' }}</button>
+				</div>
+			</form>
+		</div>
+	}
+</div>
