@@ -1,0 +1,53 @@
+name: saas-base-backend
+region: sgp
+services:
+  - name: api
+    source_dir: /backend
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+
+    build_command: npm ci && npm run prisma:generate && npm run build
+    run_command: npm run prisma:deploy && npm run start:prod
+
+    health_check:
+      http_path: /dashboard/overview
+
+    envs:
+      - key: NODE_ENV
+        scope: RUN_AND_BUILD_TIME
+        value: production
+
+      - key: PORT
+        scope: RUN_AND_BUILD_TIME
+        value: "8080"
+
+      - key: CORS_ORIGIN
+        scope: RUN_AND_BUILD_TIME
+        value: https://YOUR-PROJECT.vercel.app
+
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: REPLACE_WITH_DATABASE_URL
+
+      - key: DIRECT_URL
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: REPLACE_WITH_DIRECT_URL
+
+      - key: SUPABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: REPLACE_WITH_SUPABASE_URL
+
+      - key: SUPABASE_ANON_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: REPLACE_WITH_SUPABASE_ANON_KEY
+
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: REPLACE_WITH_SUPABASE_SERVICE_ROLE_KEY

@@ -2,12 +2,24 @@ import axios, { AxiosHeaders } from 'axios';
 import { clearAccessToken, getAccessToken } from './auth-storage';
 
 function resolveApiBaseUrl(): string {
+  const appEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+  const configuredApiBaseUrl = String(appEnv?.['NG_APP_API_BASE_URL'] ?? '').trim();
+
+  if (configuredApiBaseUrl) {
+    return configuredApiBaseUrl;
+  }
+
   if (typeof window === 'undefined') {
     return 'http://localhost:3000';
   }
 
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
   const host = window.location.hostname || 'localhost';
-  return `http://${host}:3000`;
+  const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+
+  return isLocalHost
+    ? 'http://localhost:3000'
+    : `${protocol}//${host}:3000`;
 }
 
 export const apiClient = axios.create({
