@@ -8,200 +8,281 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum Role {
-  ADMIN
-  SERVICE_ADVISOR
-  TECHNICIAN
-  CASHIER
+model tblusers {
+  id          BigInt       @id @default(autoincrement())
+  username    String?      @unique
+  password    String?
+  fullname    String?
+  birthdate   DateTime?    @db.Date
+  address     String?
+  email       String?
+  contact     String?
+  status      Int?         @db.SmallInt
+  is_deleted  Boolean?     @default(false)
+  created_at  DateTime     @default(now()) @db.Timestamptz
+  updated_at  DateTime?    @default(now()) @db.Timestamp
+  created_by  BigInt?      @default(1)
+  roleId      BigInt?
+  branchId    BigInt?
+  role        tblrbac?     @relation(fields: [roleId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  branch      tblbranches? @relation(fields: [branchId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+
+  @@map("tblusers")
 }
 
-model Customer {
-  id          Int       @id @default(autoincrement())
+model tblrbac {
+  id             BigInt     @id @default(autoincrement())
+  roleName       String?
+  roleMenus      String?
+  rolePermission String?
+  created_by     BigInt?
+  created_at     DateTime   @default(now()) @db.Timestamptz
+  users          tblusers[]
+
+  @@map("tblrbac")
+}
+
+model tblbranches {
+  id            BigInt     @id @default(autoincrement())
+  created_at    DateTime   @default(now()) @db.Timestamptz
+  branchName    String?
+  branchAddress String?
+  users         tblusers[]
+
+  @@map("tblbranches")
+}
+
+model tblcustomers {
+  id          BigInt                   @id @default(autoincrement())
   name        String
-  contactInfo String?   @map("contact_info")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  vehicles    Vehicle[]
-  invoices    Invoice[]
-  receivables AccountReceivable[]
+  contact     String?
+  address     String?                  // New: Customer address
+  email       String?                  // New: Customer email
+  created_at  DateTime                 @default(now()) @db.Timestamptz
+  vehicles    tblvehicles[]
+  invoices    tblinvoices[]
+  receivables tblaccounts_receivable[]
 
-  @@map("customers")
+  @@map("tblcustomers")
 }
 
-model Vehicle {
-  id          Int              @id @default(autoincrement())
-  customerId  Int              @map("customer_id")
-  plateNumber String           @unique @map("plate_number")
-  make        String
-  model       String
-  engineInfo  String?          @map("engine_info")
-  chassisInfo String?          @map("chassis_info")
-  customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  jobOrders   JobOrder[]
-  history     ServiceHistory[]
+model tblvehicles {
+  id                    BigInt         @id @default(autoincrement())
+  customerId            BigInt         @map("customer_id")
+  plateNumber           String         @unique @map("plate_number")
+  make                  String
+  model                 String
+  engineInfo            String?        @map("engine_info")
+  chassisInfo           String?        @map("chassis_info")
+  engineType            String?        // New: Engine type
+  odometerReading       Int?           @map("odometer_reading") // New: Odometer reading
+  fuelType              String?        @map("fuel_type") // New: Fuel type
+  warrantyStatus        String?        @map("warranty_status") // New: Warranty status
+  previousServiceDocs   String?        @map("previous_service_docs") // New: Previous service documentation (JSON or text)
+  customer              tblcustomers   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobOrders             tbljoborders[]
+  history               tblservice_history[]
+  milestones            tblmilestones[]
 
   @@index([customerId])
-  @@map("vehicles")
+  @@map("tblvehicles")
 }
 
-model Technician {
-  id                 Int              @id @default(autoincrement())
+model tblmilestones {
+  id        BigInt       @id @default(autoincrement())
+  vehicleId BigInt       @map("vehicle_id")
+  milestone String       // e.g., "10K ODO"
+  tasks     String       // List of maintenance tasks (JSON string)
+  vehicle   tblvehicles  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("tblmilestones")
+}
+
+model tbltechnicians {
+  id                 BigInt            @id @default(autoincrement())
   name               String
-  contactInfo        String?          @map("contact_info")
-  performanceMetrics Json?            @map("performance_metrics")
-  jobOrders          JobOrder[]
+  contactInfo        String?           @map("contact_info")
+  performanceMetrics String?           @map("performance_metrics") // JSON as string
+  jobOrders          tbljoborders[]
 
-  @@map("technicians")
+  @@map("tbltechnicians")
 }
 
-model JobOrder {
-  id           Int              @id @default(autoincrement())
-  vehicleId    Int              @map("vehicle_id")
-  technicianId Int?             @map("technician_id")
-  description  String
-  status       String           @default("PENDING")
-  createdAt    DateTime         @default(now()) @map("created_at")
-  completedAt  DateTime?        @map("completed_at")
-  vehicle      Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  technician   Technician?      @relation(fields: [technicianId], references: [id], onDelete: SetNull)
-  services     ServiceHistory[]
-  sales        Sale[]
-  invoices     Invoice[]
+model tbljoborders {
+  id             BigInt                  @id @default(autoincrement())
+  vehicleId      BigInt                  @map("vehicle_id")
+  technicianId   BigInt?                 @map("technician_id")
+  description    String
+  status         String                  @default("PENDING")
+  created_at     DateTime                @default(now()) @db.Timestamptz
+  completed_at   DateTime?               @map("completed_at")
+  customerReview String?                 @map("customer_review") // New: Customer sign-off/review
+  customerApprovalSummary Json?          @map("customer_approval_summary")
+  customerSignatureData   String?        @map("customer_signature_data") @db.Text
+  customerApprovedBy      String?        @map("customer_approved_by")
+  customerApprovedAt      DateTime?      @map("customer_approved_at") @db.Timestamptz
+  billingPrice   Decimal?                @db.Decimal(12, 2) @map("billing_price") // New: Billing price
+  jobsDone       String?                 @map("jobs_done") @db.Text
+  serviceRemarks String?                 @map("service_remarks") @db.Text
+  mechanicSignatoryName String?          @map("mechanic_signatory_name")
+  mechanicSignatureData String?          @map("mechanic_signature_data") @db.Text
+  mechanicSignedAt DateTime?             @map("mechanic_signed_at") @db.Timestamptz
+  forPaymentAt   DateTime?               @map("for_payment_at") @db.Timestamptz
+  paymentDetails Json?                   @map("payment_details")
+  vehicle        tblvehicles             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  technician     tbltechnicians?         @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+  services       tblservice_history[]
+  sales          tblsales[]
+  invoices       tblinvoices[]
+  supplies       tbljoborder_supplies[]
 
   @@index([vehicleId])
   @@index([technicianId])
-  @@map("job_orders")
+  @@map("tbljoborders")
 }
 
-model ServiceHistory {
-  id            Int       @id @default(autoincrement())
-  vehicleId     Int       @map("vehicle_id")
-  jobOrderId    Int       @map("job_order_id")
-  partsReplaced String?   @map("parts_replaced")
-  notes         String?
-  serviceDate   DateTime  @map("service_date")
-  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  jobOrder      JobOrder  @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+model tbljoborder_supplies {
+  id           BigInt        @id @default(autoincrement())
+  jobOrderId   BigInt        @map("job_order_id")
+  supplyType   String        // "inventory", "customer_provided", "external_expense"
+  inventoryId  BigInt?       @map("inventory_id")
+  description  String        // Item description
+  quantity     Int           @default(1)
+  costPrice    Decimal?      @db.Decimal(12, 2) @map("cost_price") // For external expenses
+  billingPrice Decimal?      @db.Decimal(12, 2) @map("billing_price") // Shown to customer
+  jobOrder     tbljoborders  @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  inventory    tblinventory? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+
+  @@index([jobOrderId])
+  @@index([inventoryId])
+  @@map("tbljoborder_supplies")
+}
+
+model tblservice_history {
+  id          BigInt       @id @default(autoincrement())
+  vehicleId   BigInt       @map("vehicle_id")
+  jobOrderId  BigInt       @map("job_order_id")
+  partsReplaced String?    @map("parts_replaced")
+  notes       String?
+  serviceDate DateTime     @map("service_date")
+  vehicle     tblvehicles  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  jobOrder    tbljoborders @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
   @@index([jobOrderId])
-  @@map("service_history")
+  @@map("tblservice_history")
 }
 
-model Supplier {
-  id           Int               @id @default(autoincrement())
+model tblsuppliers {
+  id           BigInt             @id @default(autoincrement())
   name         String
-  contactInfo  String?           @map("contact_info")
-  paymentTerms String?           @map("payment_terms")
-  inventory    Inventory[]
-  purchases    Purchase[]
-  payables     AccountPayable[]
+  contactInfo  String?            @map("contact_info")
+  paymentTerms String?            @map("payment_terms")
+  inventory    tblinventory[]
+  purchases    tblpurchases[]
+  payables     tblaccounts_payable[]
 
-  @@map("suppliers")
+  @@map("tblsuppliers")
 }
 
-model Inventory {
-  id                Int       @id @default(autoincrement())
-  partName          String    @map("part_name")
-  stockQty          Int       @default(0) @map("stock_qty")
-  lowStockThreshold Int       @default(5) @map("low_stock_threshold")
-  supplierId        Int?      @map("supplier_id")
-  supplier          Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  sales             Sale[]
+model tblinventory {
+  id                BigInt         @id @default(autoincrement())
+  partName          String         @map("part_name")
+  stockQty          Int            @default(0) @map("stock_qty")
+  lowStockThreshold Int            @default(5) @map("low_stock_threshold")
+  costPrice         Decimal?       @db.Decimal(12, 2) @map("cost_price")
+  srpPrice          Decimal?       @db.Decimal(12, 2) @map("srp_price")
+  supplierId        BigInt?        @map("supplier_id")
+  supplier          tblsuppliers?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  sales             tblsales[]
+  jobSupplies       tbljoborder_supplies[]
 
   @@index([supplierId])
-  @@map("inventory")
+  @@map("tblinventory")
 }
 
-model Purchase {
-  id         Int              @id @default(autoincrement())
-  supplierId Int              @map("supplier_id")
-  amount     Decimal          @db.Decimal(12, 2)
-  createdAt  DateTime         @default(now()) @map("created_at")
-  supplier   Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  payables   AccountPayable[]
+model tblpurchases {
+  id         BigInt             @id @default(autoincrement())
+  supplierId BigInt             @map("supplier_id")
+  amount     Decimal            @db.Decimal(12, 2)
+  created_at DateTime           @default(now()) @db.Timestamptz
+  supplier   tblsuppliers       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  payables   tblaccounts_payable[]
 
   @@index([supplierId])
-  @@map("purchases")
+  @@map("tblpurchases")
 }
 
-model Invoice {
-  id         Int                 @id @default(autoincrement())
-  customerId Int                 @map("customer_id")
-  jobOrderId Int?                @map("job_order_id")
-  totalAmount Decimal            @db.Decimal(12, 2) @map("total_amount")
-  status     String              @default("UNPAID")
-  issuedAt   DateTime            @default(now()) @map("issued_at")
-  paidAt     DateTime?           @map("paid_at")
-  customer   Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  jobOrder   JobOrder?           @relation(fields: [jobOrderId], references: [id], onDelete: SetNull)
-  sales      Sale[]
-  receivable AccountReceivable?
+model tblinvoices {
+  id         BigInt                   @id @default(autoincrement())
+  customerId BigInt                   @map("customer_id")
+  jobOrderId BigInt?                  @map("job_order_id")
+  totalAmount Decimal                 @db.Decimal(12, 2) @map("total_amount")
+  status     String                   @default("UNPAID")
+  type       String                   @default("initial_billing") // initial_billing, sales_invoice, receipt
+  issued_at  DateTime                 @default(now()) @db.Timestamptz
+  paid_at    DateTime?                @map("paid_at")
+  customer   tblcustomers             @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobOrder   tbljoborders?            @relation(fields: [jobOrderId], references: [id], onDelete: SetNull)
+  sales      tblsales[]
+  receivable tblaccounts_receivable?
 
   @@index([customerId])
   @@index([jobOrderId])
-  @@map("invoices")
+  @@map("tblinvoices")
 }
 
-model Sale {
-  id          Int        @id @default(autoincrement())
-  jobOrderId  Int?       @map("job_order_id")
-  inventoryId Int?       @map("inventory_id")
-  invoiceId   Int?       @map("invoice_id")
-  amount      Decimal    @db.Decimal(12, 2)
-  createdAt   DateTime   @default(now()) @map("created_at")
-  jobOrder    JobOrder?  @relation(fields: [jobOrderId], references: [id], onDelete: SetNull)
-  inventory   Inventory? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
-  invoice     Invoice?   @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+model tblsales {
+  id          BigInt        @id @default(autoincrement())
+  jobOrderId  BigInt?       @map("job_order_id")
+  inventoryId BigInt?       @map("inventory_id")
+  invoiceId   BigInt?       @map("invoice_id")
+  amount      Decimal       @db.Decimal(12, 2)
+  created_at  DateTime      @default(now()) @db.Timestamptz
+  jobOrder    tbljoborders? @relation(fields: [jobOrderId], references: [id], onDelete: SetNull)
+  inventory   tblinventory? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+  invoice     tblinvoices?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   @@index([jobOrderId])
   @@index([inventoryId])
   @@index([invoiceId])
-  @@map("sales")
+  @@map("tblsales")
 }
 
-model AccountReceivable {
-  id         Int       @id @default(autoincrement())
-  customerId Int       @map("customer_id")
-  invoiceId  Int       @unique @map("invoice_id")
-  balance    Decimal   @db.Decimal(12, 2)
-  dueDate    DateTime  @map("due_date")
-  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  invoice    Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+model tblaccounts_receivable {
+  id         BigInt       @id @default(autoincrement())
+  customerId BigInt       @map("customer_id")
+  invoiceId  BigInt       @unique @map("invoice_id")
+  balance    Decimal      @db.Decimal(12, 2)
+  dueDate    DateTime     @map("due_date")
+  customer   tblcustomers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoice    tblinvoices  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([customerId])
-  @@map("accounts_receivable")
+  @@map("tblaccounts_receivable")
 }
 
-model Expense {
-  id          Int      @id @default(autoincrement())
+model tblexpenses {
+  id          BigInt   @id @default(autoincrement())
   category    String
   description String
   amount      Decimal  @db.Decimal(12, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
+  created_at  DateTime @default(now()) @db.Timestamptz
 
-  @@map("expenses")
+  @@map("tblexpenses")
 }
 
-model AccountPayable {
-  id         Int       @id @default(autoincrement())
-  supplierId Int       @map("supplier_id")
-  purchaseId Int       @map("purchase_id")
-  balance    Decimal   @db.Decimal(12, 2)
-  dueDate    DateTime  @map("due_date")
-  supplier   Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  purchase   Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+model tblaccounts_payable {
+  id         BigInt       @id @default(autoincrement())
+  supplierId BigInt       @map("supplier_id")
+  purchaseId BigInt       @map("purchase_id")
+  balance    Decimal      @db.Decimal(12, 2)
+  dueDate    DateTime     @map("due_date")
+  supplier   tblsuppliers @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchase   tblpurchases @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
   @@index([supplierId])
   @@index([purchaseId])
-  @@map("accounts_payable")
-}
-
-model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         Role
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  @@map("users")
+  @@map("tblaccounts_payable")
 }

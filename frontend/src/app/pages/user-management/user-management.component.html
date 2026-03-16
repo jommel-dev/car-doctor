@@ -9,12 +9,61 @@
       </div>
 
       <app-button
-        *appCan="{ menu: 'user_management', permission: 'canCreate' }"
+        *appCan="{ menu: 'user-management', permission: 'canCreate' }"
         size="sm"
+        (click)="openModal()"
       >
         Add User
       </app-button>
     </div>
+
+    <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+      <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Users</p>
+        <p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">{{ users.length }}</p>
+      </div>
+      <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Active</p>
+        <p class="mt-1 text-lg font-semibold text-success-700 dark:text-success-400">{{ activeUserCount }}</p>
+      </div>
+      <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Inactive</p>
+        <p class="mt-1 text-lg font-semibold text-warning-700 dark:text-warning-400">{{ inactiveUserCount }}</p>
+      </div>
+      <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Deleted</p>
+        <p class="mt-1 text-lg font-semibold text-error-700 dark:text-error-400">{{ deletedUserCount }}</p>
+      </div>
+    </div>
+
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center">
+        <input
+          type="text"
+          [value]="userSearch"
+          (input)="onUserSearchChange($any($event.target).value)"
+          placeholder="Search username, name, role, or status"
+          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-300 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+        />
+
+        <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+          <input
+            type="checkbox"
+            [checked]="showDeletedUsers"
+            (change)="onToggleShowDeletedUsers($any($event.target).checked)"
+            class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700"
+          />
+          Show deleted users
+        </label>
+      </div>
+      <div class="text-sm text-gray-500 dark:text-gray-400">
+        Showing {{ pagedUsers.length }} of {{ totalFilteredUsers }}
+      </div>
+    </div>
+
+    @if (errorMessage) {
+      <div class="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600 mb-4">{{ errorMessage }}</div>
+    }
 
     <div class="overflow-x-auto">
       <table class="w-full min-w-[700px]">
@@ -28,45 +77,514 @@
           </tr>
         </thead>
         <tbody>
-          @for (user of users; track user.id) {
-            <tr class="border-b border-gray-100 dark:border-gray-800/70">
-              <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.username }}</td>
-              <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.fullName }}</td>
-              <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.role }}</td>
-              <td class="px-4 py-3">
-                <span
-                  class="rounded-full px-2 py-0.5 text-xs font-medium"
-                  [ngClass]="{
-                    'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-500': user.status === 'Active',
-                    'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-500': user.status === 'Inactive'
-                  }"
-                >
-                  {{ user.status }}
-                </span>
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex items-center gap-2">
-                  <app-button
-                    *appCan="{ menu: 'user_management', permission: 'canUpdate' }"
-                    size="sm"
-                    variant="outline"
-                  >
-                    Edit
-                  </app-button>
-
-                  <app-button
-                    *appCan="{ menu: 'user_management', permission: 'canDelete' }"
-                    size="sm"
-                    variant="outline"
-                  >
-                    Delete
-                  </app-button>
-                </div>
-              </td>
+          @if (isLoading) {
+            <tr>
+              <td colspan="5" class="px-4 py-8 text-center text-gray-500">Loading users...</td>
             </tr>
+          } @else if (pagedUsers.length === 0) {
+            <tr>
+              <td colspan="5" class="px-4 py-8 text-center text-gray-500">No users found.</td>
+            </tr>
+          } @else {
+            @for (user of pagedUsers; track user.id) {
+              <tr class="border-b border-gray-100 dark:border-gray-800/70">
+                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.username }}</td>
+                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.fullName }}</td>
+                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ user.role }}</td>
+                <td class="px-4 py-3">
+                  <span
+                    class="rounded-full px-2 py-0.5 text-xs font-medium"
+                    [ngClass]="{
+                      'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-500': user.status === 'Active',
+                      'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-500': user.status === 'Inactive',
+                      'bg-error-50 text-error-700 dark:bg-error-500/15 dark:text-error-400': user.status === 'Deleted'
+                    }"
+                  >
+                    {{ user.status }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    @if (user.isDeleted) {
+                      <app-button
+                        *appCan="{ menu: 'user-management', permission: 'canUpdate' }"
+                        variant="outline"
+                        size="sm"
+                        [disabled]="restoringUserIds.has(user.id)"
+                        (click)="restoreUser(user)"
+                      >
+                        {{ restoringUserIds.has(user.id) ? 'Restoring...' : 'Restore' }}
+                      </app-button>
+                    } @else {
+                      <app-button
+                        *appCan="{ menu: 'user-management', permission: 'canUpdate' }"
+                        variant="outline"
+                        size="sm"
+                        [disabled]="isLoadingEditUser"
+                        (click)="openDrawer(user)"
+                      >
+                        Edit
+                      </app-button>
+                      <app-button
+                        *appCan="{ menu: 'user-management', permission: 'canDelete' }"
+                        variant="outline"
+                        size="sm"
+                        [disabled]="deletingUserIds.has(user.id)"
+                        (click)="deleteUser(user)"
+                      >
+                        {{ deletingUserIds.has(user.id) ? 'Deleting...' : 'Delete' }}
+                      </app-button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>
     </div>
+
+    <div class="mt-4 flex items-center justify-between">
+      <button
+        type="button"
+        class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-300"
+        (click)="onUserPageChange(page - 1)"
+        [disabled]="page <= 1"
+      >
+        Previous
+      </button>
+
+      <span class="text-sm text-gray-500 dark:text-gray-400">Page {{ page }} of {{ totalFilteredPages }}</span>
+
+      <button
+        type="button"
+        class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-300"
+        (click)="onUserPageChange(page + 1)"
+        [disabled]="page >= totalFilteredPages"
+      >
+        Next
+      </button>
+    </div>
   </div>
+
+  <!-- <div class="mt-6 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] xl:p-6">
+    <div class="mb-4 flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Roles & Permissions</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Configure menu access and permission scopes per role.</p>
+      </div>
+
+      <app-button
+        *appCan="{ menu: 'user-management', permission: 'canCreate' }"
+        size="sm"
+        (click)="openRoleModal()"
+      >
+        Add Role
+      </app-button>
+    </div>
+
+    <div class="mb-4 flex justify-end">
+      <app-button
+        *appCan="{ menu: 'user-management', permission: 'canUpdate' }"
+        variant="outline"
+        size="sm"
+        (click)="normalizeSecurityRoleMenus()"
+      >
+        Normalize Security Access
+      </app-button>
+    </div>
+
+    @if (roleErrorMessage) {
+      <div class="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600 mb-4">{{ roleErrorMessage }}</div>
+    }
+
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[700px]">
+        <thead>
+          <tr class="border-b border-gray-200 dark:border-gray-800">
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Role</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Menus</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Permissions</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (isRoleLoading) {
+            <tr>
+              <td colspan="4" class="px-4 py-8 text-center text-gray-500">Loading roles...</td>
+            </tr>
+          } @else if (roles.length === 0) {
+            <tr>
+              <td colspan="4" class="px-4 py-8 text-center text-gray-500">No roles found.</td>
+            </tr>
+          } @else {
+            @for (role of roles; track role.id) {
+              <tr class="border-b border-gray-100 dark:border-gray-800/70">
+                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ role.roleName || 'Unnamed Role' }}</td>
+                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ role.roleMenus || '-' }}</td>
+                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ role.rolePermission || '-' }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <app-button
+                      *appCan="{ menu: 'user-management', permission: 'canUpdate' }"
+                      variant="outline"
+                      size="sm"
+                      (click)="openRoleModal(role)"
+                    >
+                      Edit
+                    </app-button>
+                    <app-button
+                      *appCan="{ menu: 'user-management', permission: 'canDelete' }"
+                      variant="outline"
+                      size="sm"
+                      (click)="deleteRole(role)"
+                    >
+                      Delete
+                    </app-button>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div> -->
+
+  @if (showDrawer) {
+    <div class="fixed inset-0 z-[100000] bg-gray-900/40" (click)="closePanels()"></div>
+  }
+
+  <aside
+    class="fixed right-0 top-0 z-[100001] h-full w-full max-w-2xl transform border-l border-gray-200 bg-white shadow-2xl transition-transform duration-300 dark:border-gray-800 dark:bg-gray-900"
+    [ngClass]="showDrawer ? 'translate-x-0' : 'translate-x-full'"
+  >
+    <div class="flex h-full flex-col">
+      <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">
+            {{ drawerMode === 'create' ? 'Create User' : 'Edit User' }}
+          </h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            {{ drawerMode === 'create' ? 'Create account and assign role.' : 'Update user details and role assignment.' }}
+          </p>
+        </div>
+        <button
+          type="button"
+          (click)="closePanels()"
+          class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+        >
+          Close
+        </button>
+      </div>
+
+      <div class="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+        <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+          <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">User Account</h4>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label>
+              <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Username *</span>
+              <input
+                type="text"
+                [(ngModel)]="userForm.username"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </label>
+
+            <label>
+              <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Full Name *</span>
+              <input
+                type="text"
+                [(ngModel)]="userForm.fullname"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </label>
+
+            <label class="md:col-span-2">
+              <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Password {{ drawerMode === 'create' ? '*' : '' }}</span>
+              <input
+                type="password"
+                [(ngModel)]="userForm.password"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+              @if (drawerMode === 'edit') {
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to keep the existing password.</p>
+              }
+            </label>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+          <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Contact Information</h4>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label class="md:col-span-2">
+              <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Email</span>
+              <input
+                type="email"
+                [(ngModel)]="userForm.email"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </label>
+
+            <label class="md:col-span-2">
+              <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Contact</span>
+              <input
+                type="text"
+                [(ngModel)]="userForm.contact"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+          <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Role Assignment</h4>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label>
+              <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Role *</span>
+              <select
+                [(ngModel)]="userForm.roleId"
+                (ngModelChange)="onRoleChange($event)"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              >
+                <option [ngValue]="null">Select role</option>
+                @for (role of roles; track role.id) {
+                  <option [ngValue]="role.id">{{ role.roleName }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              <span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Status</span>
+              <select
+                [(ngModel)]="userForm.status"
+                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              >
+                <option [ngValue]="1">Active</option>
+                <option [ngValue]="0">Inactive</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+          <div class="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h4 class="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Normalized Role Permissions</h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Permissions currently granted by the selected role.</p>
+            </div>
+            <span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              {{ rolePermissionKeys.length }} granted
+            </span>
+          </div>
+
+          @if (isLoadingRolePermissions || isLoadingPermissionContext) {
+            <p class="text-sm text-gray-500 dark:text-gray-400">Loading role permissions...</p>
+          } @else {
+            <div class="flex flex-wrap gap-1.5">
+              @for (permissionKey of rolePermissionKeys; track permissionKey) {
+                <span class="rounded-full bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                  {{ getPermissionLabel(permissionKey) }}
+                </span>
+              } @empty {
+                <span class="text-xs text-gray-400 dark:text-gray-500">No normalized role permissions found.</span>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+          <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">User Permission Overrides</h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Set per-user allow/deny exceptions on top of role permissions.</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Selected overrides: {{ selectedOverrideCount }}</span>
+              <button
+                type="button"
+                class="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                [disabled]="selectedOverrideCount === 0"
+                (click)="clearOverrideSelections()"
+              >
+                Reset Overrides
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <input
+              type="text"
+              [ngModel]="permissionSearch"
+              (ngModelChange)="permissionSearch = $event"
+              placeholder="Search permission key, module, or label"
+              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+            />
+          </div>
+
+          @if (isLoadingPermissionKeys) {
+            <p class="text-sm text-gray-500 dark:text-gray-400">Loading permission keys...</p>
+          } @else {
+            <div class="max-h-72 space-y-2 overflow-y-auto">
+              @for (permission of filteredPermissionOptions; track permission.key) {
+                <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
+                  <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ permission.label }}</div>
+                      <div class="text-[11px] text-gray-500 dark:text-gray-400">{{ permission.key }}</div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                        {{ permission.module || 'misc' }}
+                      </span>
+                      @if (isRoleGranted(permission.key)) {
+                        <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                          Role Granted
+                        </span>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="mt-2 flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      class="rounded-md border px-2 py-1 text-[11px] font-medium"
+                      [ngClass]="getOverrideEffect(permission.key) === 'inherit'
+                        ? 'border-gray-700 bg-gray-700 text-white dark:border-gray-500 dark:bg-gray-500'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'"
+                      (click)="setOverrideEffect(permission.key, 'inherit')"
+                    >
+                      Inherit
+                    </button>
+
+                    <button
+                      type="button"
+                      class="rounded-md border px-2 py-1 text-[11px] font-medium"
+                      [ngClass]="getOverrideEffect(permission.key) === 'allow'
+                        ? 'border-success-600 bg-success-600 text-white'
+                        : 'border-success-300 text-success-700 hover:bg-success-50 dark:border-success-700 dark:text-success-400 dark:hover:bg-success-500/10'"
+                      (click)="setOverrideEffect(permission.key, 'allow')"
+                    >
+                      Force Allow
+                    </button>
+
+                    <button
+                      type="button"
+                      class="rounded-md border px-2 py-1 text-[11px] font-medium"
+                      [ngClass]="getOverrideEffect(permission.key) === 'deny'
+                        ? 'border-error-600 bg-error-600 text-white'
+                        : 'border-error-300 text-error-700 hover:bg-error-50 dark:border-error-700 dark:text-error-400 dark:hover:bg-error-500/10'"
+                      (click)="setOverrideEffect(permission.key, 'deny')"
+                    >
+                      Force Deny
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <div class="rounded-lg border border-dashed border-gray-300 px-3 py-5 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  No permission keys found.
+                </div>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Effective Permission Preview</h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Preview after applying selected role and override selections.</p>
+            </div>
+            <span class="rounded-full bg-success-50 px-2 py-1 text-xs font-medium text-success-700 dark:bg-success-500/15 dark:text-success-400">
+              {{ effectivePreviewKeys.length }} allowed
+            </span>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5">
+            @for (permissionKey of effectivePreviewKeys; track permissionKey) {
+              <span class="rounded-full bg-success-50 px-2 py-1 text-xs font-medium text-success-700 dark:bg-success-500/15 dark:text-success-400">
+                {{ getPermissionLabel(permissionKey) }}
+              </span>
+            } @empty {
+              <span class="text-xs text-gray-400 dark:text-gray-500">No effective permissions in preview.</span>
+            }
+          </div>
+
+          @if (drawerMode === 'edit') {
+            <div class="mt-4">
+              <p class="mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">Currently Saved Effective Permissions</p>
+              <div class="flex flex-wrap gap-1.5">
+                @for (item of savedEffectivePermissions; track item.permissionKey) {
+                  <span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    {{ item.permissionLabel || item.permissionKey }}
+                  </span>
+                } @empty {
+                  <span class="text-xs text-gray-400 dark:text-gray-500">No saved effective permissions found.</span>
+                }
+              </div>
+            </div>
+          }
+        </section>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 border-t border-gray-200 px-6 py-4 dark:border-gray-800">
+        <button
+          type="button"
+          (click)="closePanels()"
+          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          (click)="submitUserForm()"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+        >
+          {{ drawerMode === 'create' ? 'Create User' : 'Save Changes' }}
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  @if (showRoleModal) {
+    <div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()">
+      <form class="w-full max-w-2xl rounded-2xl bg-white p-6 dark:bg-gray-900" (submit)="saveRole($event)" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ editingRoleId ? 'Edit Role' : 'Create Role' }}</h3>
+        <div class="mt-4 grid gap-4">
+          <input name="roleName" [value]="editingRoleName" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Role Name" required>
+
+          <div>
+            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Menus</p>
+            <div class="grid grid-cols-2 gap-2">
+              @for (menu of menuOptions; track menu) {
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" name="roleMenus" [value]="menu" [checked]="isMenuChecked(menu)">
+                  <span>{{ menu }}</span>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div>
+            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Permissions</p>
+            <div class="grid grid-cols-2 gap-2">
+              @for (permission of rolePermissionOptions; track permission) {
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" name="rolePermission" [value]="permission" [checked]="isPermissionChecked(permission)">
+                  <span>{{ permission }}</span>
+                </label>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button>
+          <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">{{ editingRoleId ? 'Save Role' : 'Create Role' }}</button>
+        </div>
+      </form>
+    </div>
+  }
 </div>

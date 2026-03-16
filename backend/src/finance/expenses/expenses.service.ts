@@ -6,22 +6,22 @@ export class ExpensesService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(data: Record<string, unknown>) {
-    return this.prisma.expense.create({ data: data as never });
+    return this.prisma.tblexpenses.create({ data: data as never });
   }
 
   findAll() {
-    return this.prisma.expense.findMany({ orderBy: { createdAt: 'desc' } });
+    return this.prisma.tblexpenses.findMany({ orderBy: { created_at: 'desc' } });
   }
 
   findOne(id: number) {
-    return this.prisma.expense.findUnique({ where: { id } });
+    return this.prisma.tblexpenses.findUnique({ where: { id } });
   }
 
   update(id: number, data: Record<string, unknown>) {
-    return this.prisma.expense.update({ where: { id }, data: data as never });
+    return this.prisma.tblexpenses.update({ where: { id }, data: data as never });
   }
 
   remove(id: number) {
-    return this.prisma.expense.delete({ where: { id } });
+    return this.prisma.tblexpenses.delete({ where: { id } });
   }
 }

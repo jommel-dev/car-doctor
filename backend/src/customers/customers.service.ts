@@ -5,26 +5,39 @@ import { PrismaService } from '../prisma/prisma.service';
 export class CustomersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private normalizeCustomerData(data: Record<string, unknown>): Record<string, unknown> {
+    const normalized: Record<string, unknown> = { ...data };
+
+    if (!normalized['contact'] && normalized['contactInfo']) {
+      normalized['contact'] = normalized['contactInfo'];
+    }
+
+    delete normalized['contactInfo'];
+    return normalized;
+  }
+
   create(data: Record<string, unknown>) {
-    return this.prisma.customer.create({ data: data as never });
+    const normalizedData = this.normalizeCustomerData(data);
+    return this.prisma.tblcustomers.create({ data: normalizedData as never });
   }
 
   findAll() {
-    return this.prisma.customer.findMany({
+    return this.prisma.tblcustomers.findMany({
       include: { vehicles: true, invoices: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
     });
   }
 
   findOne(id: number) {
-    return this.prisma.customer.findUnique({ where: { id }, include: { vehicles: true, invoices: true } });
+    return this.prisma.tblcustomers.findUnique({ where: { id }, include: { vehicles: true, invoices: true } });
   }
 
   update(id: number, data: Record<string, unknown>) {
-    return this.prisma.customer.update({ where: { id }, data: data as never });
+    const normalizedData = this.normalizeCustomerData(data);
+    return this.prisma.tblcustomers.update({ where: { id }, data: normalizedData as never });
   }
 
   remove(id: number) {
-    return this.prisma.customer.delete({ where: { id } });
+    return this.prisma.tblcustomers.delete({ where: { id } });
   }
 }

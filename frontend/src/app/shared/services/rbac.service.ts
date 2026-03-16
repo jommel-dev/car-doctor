@@ -4,9 +4,15 @@ import { getAccessToken } from './auth-storage';
 export type MenuKey =
   | 'dashboard'
   | 'sales_order'
+  | 'customers'
+  | 'quotation'
+  | 'job_orders'
+  | 'pos'
+  | 'reports'
   | 'purchase_order'
   | 'inventory'
-  | 'user_management'
+  | 'user-management'
+  | 'security'
   | 'settings';
 
 export type PermissionKey = 'canCreate' | 'canRead' | 'canUpdate' | 'canDelete' | 'canDoAll';
@@ -32,6 +38,139 @@ export class RbacService {
   private cachedPayload: JwtPayload | null = null;
   private cachedMenus = new Set<string>();
   private cachedPermissions = new Set<string>();
+
+  private readonly moduleToMenuMap: Record<string, MenuKey> = {
+    dashboard: 'dashboard',
+    'sales-order': 'sales_order',
+    sales_order: 'sales_order',
+    customers: 'customers',
+    quotation: 'quotation',
+    'job-orders': 'job_orders',
+    job_orders: 'job_orders',
+    pos: 'pos',
+    reports: 'reports',
+    'purchase-order': 'purchase_order',
+    purchase_order: 'purchase_order',
+    inventory: 'inventory',
+    'user-management': 'user-management',
+    user_management: 'user-management',
+    security: 'security',
+    settings: 'security',
+  };
+
+  private parseTokenList(value: string): string[] {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return [];
+    }
+
+    const tryJson = raw
+      .replace(/'/g, '"')
+      .replace(/\bTrue\b/g, 'true')
+      .replace(/\bFalse\b/g, 'false');
+
+    try {
+      const parsed = JSON.parse(tryJson);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item ?? '').trim()).filter(Boolean);
+      }
+
+      if (parsed && typeof parsed === 'object') {
+        return Object.keys(parsed)
+          .filter((key) => Boolean((parsed as Record<string, unknown>)[key]))
+          .map((key) => String(key).trim())
+          .filter(Boolean);
+      }
+    } catch {
+      // fallback to csv parser
+    }
+
+    return raw
+      .replace(/^\[/, '')
+      .replace(/\]$/, '')
+      .split(',')
+      .map((item) => item.replace(/^["']+|["']+$/g, '').trim())
+      .filter(Boolean);
+  }
+
+  private resolveMenuKeyFromSlug(slug: string): MenuKey | null {
+    const normalized = String(slug ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+
+    return this.moduleToMenuMap[normalized] ?? null;
+  }
+
+  private resolvePermissionKeyFromSlug(slug: string): PermissionKey | null {
+    const normalized = String(slug ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '');
+
+    if (normalized.includes('doall') || normalized.includes('fullaccess') || normalized === 'admin') {
+      return 'canDoAll';
+    }
+    if (normalized.includes('create') || normalized.includes('add') || normalized.includes('write')) {
+      return 'canCreate';
+    }
+    if (normalized.includes('read') || normalized.includes('view') || normalized.includes('list')) {
+      return 'canRead';
+    }
+    if (normalized.includes('update') || normalized.includes('edit') || normalized.includes('approve') || normalized.includes('remit')) {
+      return 'canUpdate';
+    }
+    if (normalized.includes('delete') || normalized.includes('remove')) {
+      return 'canDelete';
+    }
+
+    return null;
+  }
+
+  private deriveLegacyAccessFromTokens(tokens: Set<string>): {
+    menus: Set<string>;
+    permissions: Set<string>;
+  } {
+    const menus = new Set<string>();
+    const permissions = new Set<string>();
+
+    for (const rawToken of tokens) {
+      const token = String(rawToken ?? '').trim().toLowerCase();
+      if (!token) {
+        continue;
+      }
+
+      if (token.startsWith('legacy.menu.')) {
+        const menuSlug = token.replace('legacy.menu.', '');
+        const mappedMenu = this.resolveMenuKeyFromSlug(menuSlug);
+        if (mappedMenu) {
+          menus.add(mappedMenu);
+        }
+      }
+
+      if (token.startsWith('legacy.permission.')) {
+        const permissionSlug = token.replace('legacy.permission.', '');
+        const mappedPermission = this.resolvePermissionKeyFromSlug(permissionSlug);
+        if (mappedPermission) {
+          permissions.add(mappedPermission);
+        }
+      }
+
+      const [modulePart] = token.split('.');
+      const mappedMenu = this.resolveMenuKeyFromSlug(modulePart);
+      if (mappedMenu && (token.endsWith('.view') || token.includes('.menu.'))) {
+        menus.add(mappedMenu);
+      }
+
+      const mappedPermission = this.resolvePermissionKeyFromSlug(token);
+      if (mappedPermission) {
+        permissions.add(mappedPermission);
+      }
+    }
+
+    return { menus, permissions };
+  }
 
   private refreshCache(): void {
     const token = getAccessToken();
@@ -64,25 +203,75 @@ export class RbacService {
       this.cachedPayload = JSON.parse(decoded) as JwtPayload;
 
       const menus = this.cachedPayload?.menus ?? '';
-      this.cachedMenus = new Set(
-        menus
-          .split(',')
-          .map((item) => item.trim())
+      const menuTokens = new Set(
+        this.parseTokenList(menus)
+          .map((item) => this.normalizeMenuToken(item))
           .filter(Boolean),
       );
 
       const permissions = this.cachedPayload?.permissions ?? '';
+      const permissionTokens = this.parseTokenList(permissions)
+        .map((item) => String(item ?? '').trim())
+        .filter(Boolean);
+
+      const normalizedPermissions = permissionTokens
+        .map((item) => {
+          const token = String(item ?? '').trim().toLowerCase();
+          if (token === 'read' || token === 'canread') {
+            return 'canRead';
+          }
+          if (token === 'write' || token === 'create' || token === 'cancreate') {
+            return 'canCreate';
+          }
+          if (token === 'update' || token === 'edit' || token === 'canupdate') {
+            return 'canUpdate';
+          }
+          if (token === 'delete' || token === 'remove' || token === 'candelete') {
+            return 'canDelete';
+          }
+          if (token === 'candoall' || token === 'can_do_all' || token === 'all' || token === 'admin') {
+            return 'canDoAll';
+          }
+          return '';
+        })
+        .filter(Boolean);
+
+      const derived = this.deriveLegacyAccessFromTokens(new Set(permissionTokens));
+      this.cachedMenus = new Set([...menuTokens, ...derived.menus]);
+
+      const permissionSet = new Set<string>(normalizedPermissions);
+      derived.permissions.forEach((item) => permissionSet.add(item));
+      if (
+        permissionSet.has('canRead') &&
+        permissionSet.has('canCreate') &&
+        permissionSet.has('canUpdate') &&
+        permissionSet.has('canDelete')
+      ) {
+        permissionSet.add('canDoAll');
+      }
+
       this.cachedPermissions = new Set(
-        permissions
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
+        [...permissionSet],
       );
     } catch {
       this.cachedPayload = null;
       this.cachedMenus = new Set<string>();
       this.cachedPermissions = new Set<string>();
     }
+  }
+
+  private normalizeMenuToken(value: string): string {
+    const normalized = String(value ?? '').trim().toLowerCase();
+
+    if (normalized === 'user_management' || normalized === 'user management' || normalized === 'usermanagement' || normalized === 'user-management') {
+      return 'user-management';
+    }
+
+    if (normalized === 'settings' || normalized === 'security') {
+      return 'security';
+    }
+
+    return normalized;
   }
 
   getPayload(): JwtPayload | null {
@@ -111,7 +300,21 @@ export class RbacService {
   }
 
   hasMenu(menu: MenuKey): boolean {
-    return this.getAllowedMenus().has(menu);
+    const allowedMenus = this.getAllowedMenus();
+
+    if (allowedMenus.has(menu)) {
+      return true;
+    }
+
+    if (menu === 'user-management') {
+      return allowedMenus.has('user_management') || allowedMenus.has('user management') || allowedMenus.has('usermanagement');
+    }
+
+    if (menu === 'security') {
+      return allowedMenus.has('settings');
+    }
+
+    return false;
   }
 
   hasPermission(permission: PermissionKey): boolean {
@@ -124,7 +327,7 @@ export class RbacService {
       return false;
     }
 
-    if (!this.hasMenu(menu)) {
+    if (!this.hasMenu(menu) && !this.hasPermission('canDoAll')) {
       return false;
     }
 

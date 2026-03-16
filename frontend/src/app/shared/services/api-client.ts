@@ -1,8 +1,17 @@
 import axios, { AxiosHeaders } from 'axios';
 import { clearAccessToken, getAccessToken } from './auth-storage';
 
+function resolveApiBaseUrl(): string {
+  if (typeof window === 'undefined') {
+    return 'http://localhost:3000';
+  }
+
+  const host = window.location.hostname || 'localhost';
+  return `http://${host}:3000`;
+}
+
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

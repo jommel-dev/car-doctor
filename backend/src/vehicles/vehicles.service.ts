@@ -6,28 +6,28 @@ export class VehiclesService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(data: Record<string, unknown>) {
-    return this.prisma.vehicle.create({ data: data as never });
+    return this.prisma.tblvehicles.create({ data: data as never });
   }
 
   findAll() {
-    return this.prisma.vehicle.findMany({
-      include: { customer: true, history: true, jobOrders: true },
+    return this.prisma.tblvehicles.findMany({
+      include: { customer: true, history: true, jobOrders: true, milestones: true },
       orderBy: { id: 'desc' },
     });
   }
 
   findOne(id: number) {
-    return this.prisma.vehicle.findUnique({
+    return this.prisma.tblvehicles.findUnique({
       where: { id },
-      include: { customer: true, history: true, jobOrders: true },
+      include: { customer: true, history: true, jobOrders: true, milestones: true },
     });
   }
 
   update(id: number, data: Record<string, unknown>) {
-    return this.prisma.vehicle.update({ where: { id }, data: data as never });
+    return this.prisma.tblvehicles.update({ where: { id }, data: data as never });
   }
 
   remove(id: number) {
-    return this.prisma.vehicle.delete({ where: { id } });
+    return this.prisma.tblvehicles.delete({ where: { id } });
   }
 }

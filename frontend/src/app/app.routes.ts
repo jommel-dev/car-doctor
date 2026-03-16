@@ -35,6 +35,7 @@ import { ExpenseRecordingComponent } from './pages/expense-recording/expense-rec
 import { AccountsPayableComponent } from './pages/accounts-payable/accounts-payable.component';
 import { ReportingComponent } from './pages/reporting/reporting.component';
 import { SecurityAccessComponent } from './pages/security-access/security-access.component';
+import { QuotationComponent } from './pages/quotation/quotation.component';
 
 export const routes: Routes = [
   {
@@ -51,7 +52,7 @@ export const routes: Routes = [
           permission: 'canRead',
         },
         pathMatch: 'full',
-        title: 'Car Doctor | Dashboard',
+        title: 'Car Expert | Dashboard',
       },
       {
         path: 'sales-order',
@@ -61,7 +62,7 @@ export const routes: Routes = [
           menu: 'sales_order',
           permission: 'canRead',
         },
-        title: 'Car Doctor | Sales Order',
+        title: 'Car Expert | Sales Order',
       },
       {
         path: 'purchase-order',
@@ -71,92 +72,106 @@ export const routes: Routes = [
           menu: 'purchase_order',
           permission: 'canRead',
         },
-        title: 'Car Doctor | Purchase Order',
+        title: 'Car Expert | Purchase Order',
       },
       {
         path: 'customers',
         component: CustomerManagementComponent,
-        title: 'Car Doctor | Customer Management',
+        title: 'Car Expert | Customer Management',
       },
       {
         path: 'vehicles',
         component: VehicleManagementComponent,
-        title: 'Car Doctor | Vehicle Management',
+        title: 'Car Expert | Vehicle Management',
       },
       {
         path: 'job-orders',
         component: JobOrdersComponent,
-        title: 'Car Doctor | Job Orders',
+        title: 'Car Expert | Job Orders',
+      },
+      {
+        path: 'quotation',
+        component: QuotationComponent,
+        title: 'Car Expert | Quotation',
       },
       {
         path: 'service-history',
         component: ServiceHistoryComponent,
-        title: 'Car Doctor | Service History',
+        title: 'Car Expert | Service History',
       },
       {
         path: 'inventory-management',
         component: InventoryManagementComponent,
-        title: 'Car Doctor | Inventory Management',
-      },
-      {
-        path: 'suppliers',
-        component: SupplierManagementComponent,
-        title: 'Car Doctor | Supplier Management',
-      },
-      {
-        path: 'pos',
-        component: PosComponent,
-        title: 'Car Doctor | Point of Sale',
-      },
-      {
-        path: 'billing-invoices',
-        component: BillingInvoicesComponent,
-        title: 'Car Doctor | Billing and Invoices',
-      },
-      {
-        path: 'accounts-receivable',
-        component: AccountsReceivableComponent,
-        title: 'Car Doctor | Accounts Receivable',
-      },
-      {
-        path: 'expenses',
-        component: ExpenseRecordingComponent,
-        title: 'Car Doctor | Expense Recording',
-      },
-      {
-        path: 'accounts-payable',
-        component: AccountsPayableComponent,
-        title: 'Car Doctor | Accounts Payable',
-      },
-      {
-        path: 'reports',
-        component: ReportingComponent,
-        title: 'Car Doctor | Reporting',
-      },
-      {
-        path: 'security-access',
-        component: SecurityAccessComponent,
-        title: 'Car Doctor | Security and Access Control',
-      },
-      {
-        path: 'inventory',
-        component: BlankComponent,
         canActivate: [rbacGuard],
         data: {
           menu: 'inventory',
           permission: 'canRead',
         },
-        title: 'Air Summit Aircon Services | Inventory',
+        title: 'Car Expert | Inventory Management',
+      },
+      {
+        path: 'suppliers',
+        component: SupplierManagementComponent,
+        title: 'Car Expert | Supplier Management',
+      },
+      {
+        path: 'pos',
+        component: PosComponent,
+        title: 'Car Expert | Point of Sale',
+      },
+      {
+        path: 'billing-invoices',
+        component: BillingInvoicesComponent,
+        title: 'Car Expert | Billing and Invoices',
+      },
+      {
+        path: 'accounts-receivable',
+        component: AccountsReceivableComponent,
+        title: 'Car Expert | Accounts Receivable',
+      },
+      {
+        path: 'expenses',
+        component: ExpenseRecordingComponent,
+        title: 'Car Expert | Expense Recording',
+      },
+      {
+        path: 'accounts-payable',
+        component: AccountsPayableComponent,
+        title: 'Car Expert | Accounts Payable',
+      },
+      {
+        path: 'reports',
+        component: ReportingComponent,
+        title: 'Car Expert | Reporting',
+      },
+      {
+        path: 'security-access',
+        component: SecurityAccessComponent,
+        canActivate: [rbacGuard],
+        data: {
+          menu: 'security',
+          permission: 'canRead',
+        },
+        title: 'Car Expert | Security and Access Control',
+      },
+      {
+        path: 'inventory',
+        component: InventoryManagementComponent,
+        canActivate: [rbacGuard],
+        data: {
+          menu: 'inventory',
+          permission: 'canRead',
+        },
+        title: 'Car Expert | Inventory',
       },
       {
         path: 'user-management',
         component: UserManagementComponent,
-        canActivate: [rbacGuard],
         data: {
-          menu: 'user_management',
+          menu: 'user-management',
           permission: 'canRead',
         },
-        title: 'Car Doctor | User Management',
+        title: 'Car Expert | User Management',
       },
       // {
       //   path:'calendar',
@@ -237,12 +252,12 @@ export const routes: Routes = [
     component:SignInComponent,
     canActivate: [guestOnlyGuard],
     canMatch: [guestOnlyMatchGuard],
-    title:'Car Doctor | Login'
+    title:'Car Expert | Login'
   },
   // error pages
   {
     path:'**',
     component:NotFoundComponent,
-    title:'Car Doctor | Not Found'
+    title:'Car Expert | Not Found'
   },
 ];

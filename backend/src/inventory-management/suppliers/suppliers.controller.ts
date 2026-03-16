@@ -1,32 +1,38 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { SuppliersService } from './suppliers.service';
+import { convertBigIntToString } from '../../utils/bigint-serializer';
 
 @Controller('suppliers')
 export class SuppliersController {
   constructor(private readonly service: SuppliersService) {}
 
   @Post()
-  create(@Body() data: Record<string, unknown>) {
-    return this.service.create(data);
+  async create(@Body() data: Record<string, unknown>) {
+    const result = await this.service.create(data);
+    return convertBigIntToString(result);
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  async findAll() {
+    const result = await this.service.findAll();
+    return convertBigIntToString(result);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const result = await this.service.findOne(+id);
+    return convertBigIntToString(result);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() data: Record<string, unknown>) {
-    return this.service.update(+id, data);
+  async update(@Param('id') id: string, @Body() data: Record<string, unknown>) {
+    const result = await this.service.update(+id, data);
+    return convertBigIntToString(result);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.service.remove(+id);
+  async remove(@Param('id') id: string) {
+    const result = await this.service.remove(+id);
+    return convertBigIntToString(result);
   }
 }
