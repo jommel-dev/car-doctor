@@ -1,2 +1,308 @@
-<div class="space-y-6"><div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]"><div class="flex items-center justify-between"><h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Inventory Management</h2><button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openModal()">Add Part</button></div></div>@if (errorMessage) { <div class="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600">{{ errorMessage }}</div> }<div class="rounded-2xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-white/[0.03]"><table class="min-w-full text-sm"><thead class="text-left text-xs text-gray-500"><tr><th class="px-4 py-3">Part</th><th class="px-4 py-3">Stock</th><th class="px-4 py-3">Supplier</th></tr></thead><tbody>@if (isLoading) {<tr><td colspan="3" class="px-4 py-4">Loading...</td></tr>} @else if (inventory.length===0) {<tr><td colspan="3" class="px-4 py-4">No inventory items.</td></tr>} @else { @for (item of inventory; track item.id) {<tr class="border-t border-gray-100 dark:border-gray-800"><td class="px-4 py-3">{{ item.partName }}</td><td class="px-4 py-3">{{ item.stockQty }}</td><td class="px-4 py-3">{{ item.supplierId || '-' }}</td></tr>} }</tbody></table></div>@if (showModal) {<div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()"><form class="w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-gray-900" (submit)="createInventory($event)" (click)="$event.stopPropagation()"><h3 class="text-lg font-semibold">Add Inventory</h3><div class="mt-4 grid gap-3"><input name="partName" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Part Name" required><input name="stockQty" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Stock Qty" value="0" required><input name="lowStockThreshold" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Threshold" value="5" required><select name="supplierId" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700">@for (supplier of suppliers; track supplier.id) {<option [value]="supplier.id">{{ supplier.name }} (#{{ supplier.id }})</option>}</select></div><div class="mt-5 flex justify-end gap-2"><button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button><button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">Save</button></div></form></div> }
+<div>
+	<app-page-breadcrumb pageTitle="Inventory" />
+
+	<div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] xl:p-6">
+		<div class="mb-4 flex items-center justify-between">
+			<div>
+				<h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Inventory Management</h3>
+				<p class="text-sm text-gray-500 dark:text-gray-400">Manage inventory items, supplier assignment, and stock thresholds.</p>
+			</div>
+
+			@if (canCreate) {
+				<button
+					type="button"
+					class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+					(click)="openCreateDrawer()"
+				>
+					Add Inventory
+				</button>
+			}
+		</div>
+
+		<div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+			<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+				<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Items</p>
+				<p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">{{ inventory.length }}</p>
+			</div>
+			<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+				<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Low Stock</p>
+				<p class="mt-1 text-lg font-semibold text-warning-700 dark:text-warning-400">{{ lowStockCount }}</p>
+			</div>
+			<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+				<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Out of Stock</p>
+				<p class="mt-1 text-lg font-semibold text-error-700 dark:text-error-400">{{ outOfStockCount }}</p>
+			</div>
+			<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+				<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Suppliers</p>
+				<p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">{{ suppliers.length }}</p>
+			</div>
+		</div>
+
+		<div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-4">
+			<input
+				type="text"
+				[(ngModel)]="search"
+				(ngModelChange)="onFiltersChanged()"
+				placeholder="Search part name or supplier"
+				class="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-brand-300 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 lg:col-span-2"
+			/>
+
+			<select
+				[(ngModel)]="selectedSupplierFilter"
+				(ngModelChange)="onFiltersChanged()"
+				class="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-brand-300 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+			>
+				<option [ngValue]="'all'">All suppliers</option>
+				@for (supplier of suppliers; track supplier.id) {
+					<option [ngValue]="supplier.id">{{ supplier.name }}</option>
+				}
+			</select>
+
+			<label class="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-300 px-3 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-300">
+				<input type="checkbox" [(ngModel)]="showLowStockOnly" (ngModelChange)="onFiltersChanged()" class="h-4 w-4" />
+				Low stock only
+			</label>
+		</div>
+
+		@if (errorMessage) {
+			<div class="mb-4 rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600">{{ errorMessage }}</div>
+		}
+
+		<div class="overflow-x-auto">
+			<table class="w-full min-w-[900px]">
+				<thead>
+					<tr class="border-b border-gray-200 dark:border-gray-800">
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Part Name</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Supplier</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Stock</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Threshold</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Cost</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">SRP</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Status</th>
+						<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					@if (isLoading) {
+						<tr>
+							<td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">Loading inventory...</td>
+						</tr>
+					} @else if (pagedInventory.length === 0) {
+						<tr>
+							<td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No inventory items found.</td>
+						</tr>
+					} @else {
+						@for (item of pagedInventory; track item.id) {
+							<tr class="border-b border-gray-100 dark:border-gray-800/70">
+								<td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ item.partName }}</td>
+								<td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ item.supplierName || '-' }}</td>
+								<td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ item.stockQty }}</td>
+								<td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ item.lowStockThreshold }}</td>
+								<td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ item.costPrice ?? '-' }}</td>
+								<td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ item.srpPrice ?? '-' }}</td>
+								<td class="px-4 py-3">
+									<span
+										class="rounded-full px-2 py-0.5 text-xs font-medium"
+										[ngClass]="isLowStock(item)
+											? 'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-500'
+											: 'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-500'"
+									>
+										{{ isLowStock(item) ? 'Low Stock' : 'Healthy' }}
+									</span>
+								</td>
+								<td class="px-4 py-3">
+									<div class="flex items-center gap-2">
+										@if (canUpdate) {
+											<button
+												type="button"
+												class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+												(click)="openEditDrawer(item)"
+											>
+												Update
+											</button>
+										}
+
+										@if (canDelete) {
+											<button
+												type="button"
+												class="rounded-lg border border-error-300 px-3 py-1.5 text-xs font-medium text-error-600 hover:bg-error-50 disabled:opacity-50"
+												[disabled]="isDeletingIds.has(item.id)"
+												(click)="deleteInventory(item)"
+											>
+												{{ isDeletingIds.has(item.id) ? 'Deleting...' : 'Delete' }}
+											</button>
+										}
+									</div>
+								</td>
+							</tr>
+						}
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<div class="mt-4 flex items-center justify-between">
+			<button
+				type="button"
+				class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-300"
+				(click)="onPageChange(page - 1)"
+				[disabled]="page <= 1"
+			>
+				Previous
+			</button>
+
+			<span class="text-sm text-gray-500 dark:text-gray-400">Page {{ page }} of {{ totalPages }}</span>
+
+			<button
+				type="button"
+				class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-300"
+				(click)="onPageChange(page + 1)"
+				[disabled]="page >= totalPages"
+			>
+				Next
+			</button>
+		</div>
+	</div>
+
+	@if (showDrawer) {
+		<div class="fixed inset-0 z-[100000] bg-gray-900/40" (click)="closeDrawer()"></div>
+	}
+
+	<aside
+		class="fixed right-0 top-0 z-[100001] h-full w-full max-w-xl transform border-l border-gray-200 bg-white shadow-2xl transition-transform duration-300 dark:border-gray-800 dark:bg-gray-900"
+		[ngClass]="showDrawer ? 'translate-x-0' : 'translate-x-full'"
+	>
+		<div class="flex h-full flex-col">
+			<div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
+				<div>
+					<h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">
+						{{ drawerMode === 'create' ? 'Create Inventory Item' : 'Update Inventory Item' }}
+					</h3>
+					<p class="text-sm text-gray-500 dark:text-gray-400">Set stock, pricing, and supplier assignment.</p>
+				</div>
+				<button
+					type="button"
+					(click)="closeDrawer()"
+					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+				>
+					Close
+				</button>
+			</div>
+
+			<div class="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+				<div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+					<p class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Supplier</p>
+					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<label>
+							<span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Supplier Type</span>
+							<select
+								[(ngModel)]="form.supplierMode"
+								(ngModelChange)="onSupplierModeChange($event)"
+								class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+							>
+								<option value="existing">Existing Supplier</option>
+								<option value="new">New Supplier</option>
+							</select>
+						</label>
+
+						@if (form.supplierMode === 'existing') {
+							<label>
+								<span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Supplier</span>
+								<select
+									[(ngModel)]="form.supplierId"
+									class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+								>
+									<option [ngValue]="null">No supplier</option>
+									@for (supplier of suppliers; track supplier.id) {
+										<option [ngValue]="supplier.id">{{ supplier.name }}</option>
+									}
+								</select>
+							</label>
+						} @else {
+							<label>
+								<span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">New Supplier Name *</span>
+								<input
+									type="text"
+									[(ngModel)]="form.newSupplierName"
+									placeholder="Enter supplier name"
+									class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+								/>
+							</label>
+						}
+					</div>
+				</div>
+
+				<label>
+					<span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Part Name *</span>
+					<input
+						type="text"
+						[(ngModel)]="form.partName"
+						class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+					/>
+				</label>
+
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+					<label>
+						<span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Stock Quantity</span>
+						<input
+							type="number"
+							[(ngModel)]="form.stockQty"
+							class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+						/>
+					</label>
+
+					<label>
+						<span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Low Stock Threshold</span>
+						<input
+							type="number"
+							[(ngModel)]="form.lowStockThreshold"
+							class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+						/>
+					</label>
+				</div>
+
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+					<label>
+						<span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Cost Price</span>
+						<input
+							type="number"
+							step="0.01"
+							[(ngModel)]="form.costPrice"
+							class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+						/>
+					</label>
+
+					<label>
+						<span class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">SRP Price</span>
+						<input
+							type="number"
+							step="0.01"
+							[(ngModel)]="form.srpPrice"
+							class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
+						/>
+					</label>
+				</div>
+
+			</div>
+
+			<div class="flex items-center justify-end gap-2 border-t border-gray-200 px-6 py-4 dark:border-gray-800">
+				<button
+					type="button"
+					(click)="closeDrawer()"
+					class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+					[disabled]="isSaving"
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					(click)="submitInventoryForm()"
+					class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+					[disabled]="isSaving"
+				>
+					{{ isSaving ? (drawerMode === 'create' ? 'Creating...' : 'Updating...') : (drawerMode === 'create' ? 'Create Item' : 'Update Item') }}
+				</button>
+			</div>
+		</div>
+	</aside>
 </div>

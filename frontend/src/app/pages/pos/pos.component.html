@@ -1,10 +1,12 @@
 <div class="space-y-6">
 	<div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-		<div class="flex items-center justify-between">
-			<h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Point of Sale</h2>
-			<button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openModal()" [disabled]="jobOrders.length === 0">New Sale</button>
+		<div class="flex flex-wrap items-center justify-between gap-4">
+			<div>
+				<h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Payment Tab</h2>
+				<p class="mt-2 text-sm text-gray-500">Ready for payment job orders: {{ jobOrders.length }}</p>
+			</div>
+			<!-- <button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openDrawer()" [disabled]="jobOrders.length === 0">Open Payment Drawer</button> -->
 		</div>
-		<p class="mt-2 text-sm text-gray-500">Ready for payment job orders: {{ jobOrders.length }}</p>
 	</div>
 
 	@if (errorMessage) {
@@ -16,105 +18,365 @@
 	}
 
 	<div class="rounded-2xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-white/[0.03]">
-		<div class="px-4 py-3 text-xs text-gray-500">Cashier Queue (For Payment)</div>
-		<table class="min-w-full text-sm">
-			<thead class="text-left text-xs text-gray-500">
-				<tr>
-					<th class="px-4 py-3">Job Order</th>
-					<th class="px-4 py-3">Concern</th>
-					<th class="px-4 py-3">Action</th>
-				</tr>
-			</thead>
-			<tbody>
-				@if (jobOrders.length===0) {
-					<tr><td colspan="3" class="px-4 py-4">No job orders waiting for payment.</td></tr>
-				} @else {
-					@for (jobOrder of jobOrders; track jobOrder.id) {
-						<tr class="border-t border-gray-100 dark:border-gray-800">
-							<td class="px-4 py-3">{{ getJobOrderLabel(jobOrder) }}</td>
-							<td class="px-4 py-3">{{ jobOrder.description || '-' }}</td>
-							<td class="px-4 py-3">
-								<button type="button" class="rounded-lg border border-gray-300 px-3 py-1 text-xs" (click)="openModalForJobOrder(jobOrder.id)">Pay Now</button>
-							</td>
+		<div class="px-4 py-3 text-xs uppercase tracking-wide text-gray-500">Cashier Queue</div>
+		<div class="overflow-x-auto">
+			<table class="min-w-full text-sm">
+				<thead class="text-left text-xs uppercase tracking-wide text-gray-500">
+					<tr>
+						<th class="px-4 py-3">Job Order</th>
+						<th class="px-4 py-3">Mechanic Completion</th>
+						<th class="px-4 py-3 text-right">Grand Total</th>
+						<th class="px-4 py-3 text-right">Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					@if (jobOrders.length === 0) {
+						<tr>
+							<td colspan="4" class="px-4 py-6 text-center text-gray-500">No job orders waiting for payment.</td>
 						</tr>
+					} @else {
+						@for (jobOrder of jobOrders; track jobOrder.id) {
+							<tr class="border-t border-gray-100 align-top dark:border-gray-800">
+								<td class="px-4 py-4">
+									<div class="font-medium text-gray-900">{{ getJobOrderLabel(jobOrder) }}</div>
+									<div class="mt-1 text-xs text-gray-500">{{ getCustomerName(jobOrder) }} • {{ getPlateNumber(jobOrder) }}</div>
+								</td>
+								<td class="px-4 py-4">
+									<div class="font-medium text-gray-900">{{ jobOrder.jobsDone || 'No completion notes' }}</div>
+									<div class="mt-1 text-xs text-gray-500">{{ jobOrder.mechanicSignatoryName || 'Mechanic not set' }}</div>
+								</td>
+								<td class="px-4 py-4 text-right font-semibold text-gray-900">{{ formatCurrency(getJobOrderTotal(jobOrder)) }}</td>
+								<td class="px-4 py-4 text-right">
+									<button type="button" class="rounded-lg border border-brand-200 px-3 py-2 text-xs font-medium text-brand-600" (click)="openDrawerForJobOrder(jobOrder.id)">Collect Payment</button>
+								</td>
+							</tr>
+						}
 					}
-				}
-			</tbody>
-		</table>
+				</tbody>
+			</table>
+		</div>
 	</div>
 
 	<div class="rounded-2xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-white/[0.03]">
-		<table class="min-w-full text-sm">
-			<thead class="text-left text-xs text-gray-500">
-				<tr>
-					<th class="px-4 py-3">ID</th>
-					<th class="px-4 py-3">Job Order</th>
-					<th class="px-4 py-3">Customer</th>
-					<th class="px-4 py-3">Item Used</th>
-					<th class="px-4 py-3">Invoice</th>
-					<th class="px-4 py-3">Amount</th>
-					<th class="px-4 py-3">Date</th>
-				</tr>
-			</thead>
-			<tbody>
-				@if (isLoading) {
-					<tr><td colspan="7" class="px-4 py-4">Loading...</td></tr>
-				} @else if (sales.length===0) {
-					<tr><td colspan="7" class="px-4 py-4">No sales yet.</td></tr>
-				} @else {
-					@for (sale of sales; track sale.id) {
-						<tr class="border-t border-gray-100 dark:border-gray-800">
-							<td class="px-4 py-3">{{ sale.id }}</td>
-							<td class="px-4 py-3">{{ getSaleJobOrderLabel(sale) }}</td>
-							<td class="px-4 py-3">{{ getSaleCustomerLabel(sale) }}</td>
-							<td class="px-4 py-3">{{ getSaleInventoryLabel(sale) }}</td>
-							<td class="px-4 py-3">{{ getSaleInvoiceLabel(sale) }}</td>
-							<td class="px-4 py-3">{{ sale.amount }}</td>
-							<td class="px-4 py-3">{{ formatDateTime(sale.createdAt) }}</td>
+		<div class="px-4 py-3 text-xs uppercase tracking-wide text-gray-500">Completed Sales</div>
+		<div class="overflow-x-auto">
+			<table class="min-w-full text-sm">
+				<thead class="text-left text-xs uppercase tracking-wide text-gray-500">
+					<tr>
+						<th class="px-4 py-3">Sale</th>
+						<th class="px-4 py-3">Customer</th>
+						<th class="px-4 py-3 text-right">Amount</th>
+						<th class="px-4 py-3 text-right">Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					@if (sales.length === 0) {
+						<tr>
+							<td colspan="4" class="px-4 py-6 text-center text-gray-500">No completed sales yet.</td>
 						</tr>
+					} @else {
+						@for (sale of sales; track sale.id) {
+							<tr class="border-t border-gray-100 dark:border-gray-800">
+								<td class="px-4 py-4">
+									<div class="font-medium text-gray-900">Sale #{{ sale.id }}</div>
+									<div class="mt-1 text-xs text-gray-500">{{ getSaleJobOrderLabel(sale) }}</div>
+								</td>
+								<td class="px-4 py-4">{{ getSaleCustomerLabel(sale) }}</td>
+								<td class="px-4 py-4 text-right font-semibold text-gray-900">{{ formatCurrency(sale.amount ?? 0) }}</td>
+								<td class="px-4 py-4 text-right">
+									<div class="flex justify-end gap-2">
+										<button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700" (click)="openReceiptFromSale(sale)">Preview</button>
+										<!-- <button type="button" class="rounded-lg border border-brand-200 px-3 py-2 text-xs font-medium text-brand-600" (click)="reprintFromSale(sale)">Reprint</button> -->
+                    <button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="reprintFromSale(sale)" [disabled]="isGeneratingPdf">
+                      {{ isGeneratingPdf ? 'Generating PDF...' : 'Reprint' }}
+                    </button>
+									</div>
+								</td>
+							</tr>
+						}
 					}
-				}
-			</tbody>
-		</table>
+				</tbody>
+			</table>
+		</div>
 	</div>
 
-	@if (showModal) {
-		<div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()">
-			<form class="w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-gray-900" (submit)="createSale($event)" (click)="$event.stopPropagation()">
-				<h3 class="text-lg font-semibold">Checkout</h3>
-
-				@if (jobOrders.length === 0) {
-					<div class="mt-4 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700">
-						No job orders are ready for payment. Move a job order to "For Payment" first.
+	@if (showDrawer) {
+		<div class="fixed inset-0 app-layer bg-gray-900/60 p-4" (click)="closePanels()">
+			<div class="mx-auto max-h-full w-full max-w-4xl overflow-auto rounded-2xl bg-white p-6 shadow-2xl" (click)="$event.stopPropagation()">
+				<form class="space-y-6" (submit)="completeJobOrder($event)">
+					<div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">
+						<div>
+							<h3 class="text-lg font-semibold text-gray-900">Payment Drawer</h3>
+							<p class="text-sm text-gray-500">Finalize payment and complete the selected job order.</p>
+						</div>
+						<button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Close</button>
 					</div>
-				}
 
-				<div class="mt-4 grid gap-3">
-					<select name="jobOrderId" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="selectedJobOrderId || ''" (change)="updateSelectedJobOrder($any($event.target).value)" [disabled]="jobOrders.length === 0 || isSubmitting" required>
-						@for (jobOrder of jobOrders; track jobOrder.id) {
-							<option [value]="jobOrder.id">{{ getJobOrderLabel(jobOrder) }}</option>
-						}
-					</select>
-					<select name="inventoryId" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [disabled]="isSubmitting">
-						<option value="">No inventory item</option>
-						@for (item of inventoryItems; track item.id) {
-							<option [value]="item.id">{{ item.partName }} (#{{ item.id }})</option>
-						}
-					</select>
-					<select name="invoiceId" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [disabled]="isSubmitting">
-						<option value="">No invoice</option>
-						@for (invoice of getAvailableInvoices(); track invoice.id) {
-							<option [value]="invoice.id">INV-{{ invoice.id }}</option>
-						}
-					</select>
-					<input name="amount" type="number" min="0.01" step="0.01" class="h-11 rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" placeholder="Amount" [disabled]="isSubmitting" required>
+					<div class="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+						<div class="space-y-4">
+							<div>
+								<label class="mb-1 block text-sm font-medium text-gray-700">Job Order</label>
+								@if (isJobOrderSelectionLocked) {
+									<div class="flex h-11 items-center rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+										{{ getSelectedJobOrder() ? getJobOrderLabel(getSelectedJobOrder()) : 'No job order selected' }}
+									</div>
+								} @else {
+									<select class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="selectedJobOrderId ?? ''" (change)="updateSelectedJobOrder($any($event.target).value)" [disabled]="isSubmitting">
+										<option value="">Select job order</option>
+										@for (jobOrder of jobOrders; track jobOrder.id) {
+											<option [value]="jobOrder.id">{{ getJobOrderLabel(jobOrder) }}</option>
+										}
+									</select>
+								}
+							</div>
+
+							@if (getSelectedJobOrder(); as selectedJobOrder) {
+								<div class="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+									<div class="grid gap-4 md:grid-cols-2">
+										<div>
+											<div class="text-xs uppercase tracking-wide text-gray-500">Customer</div>
+											<div class="mt-1 font-medium text-gray-900">{{ getCustomerName(selectedJobOrder) }}</div>
+										</div>
+										<div>
+											<div class="text-xs uppercase tracking-wide text-gray-500">Vehicle</div>
+											<div class="mt-1 font-medium text-gray-900">{{ getVehicleModel(selectedJobOrder) }}</div>
+										</div>
+										<div>
+											<div class="text-xs uppercase tracking-wide text-gray-500">Plate Number</div>
+											<div class="mt-1 font-medium text-gray-900">{{ getPlateNumber(selectedJobOrder) }}</div>
+										</div>
+										<div>
+											<div class="text-xs uppercase tracking-wide text-gray-500">Remarks</div>
+											<div class="mt-1 font-medium text-gray-900">{{ selectedJobOrder.serviceRemarks || '-' }}</div>
+										</div>
+									</div>
+								</div>
+
+								<div class="grid gap-4 md:grid-cols-3">
+									<div class="rounded-2xl border border-gray-200 p-4">
+										<div class="text-xs uppercase tracking-wide text-gray-500">Parts</div>
+										<div class="mt-2 text-2xl font-semibold text-gray-900">{{ formatCurrency(getJobOrderPartsTotal(selectedJobOrder)) }}</div>
+									</div>
+									<div class="rounded-2xl border border-gray-200 p-4">
+										<div class="text-xs uppercase tracking-wide text-gray-500">Labor</div>
+										<div class="mt-2 text-2xl font-semibold text-gray-900">{{ formatCurrency(getJobOrderLaborAmount(selectedJobOrder)) }}</div>
+									</div>
+									<div class="rounded-2xl border border-gray-200 p-4">
+										<div class="text-xs uppercase tracking-wide text-gray-500">Grand Total</div>
+										<div class="mt-2 text-2xl font-semibold text-gray-900">{{ formatCurrency(getJobOrderTotal(selectedJobOrder)) }}</div>
+									</div>
+								</div>
+							}
+						</div>
+
+						<div class="rounded-2xl border border-gray-200 p-4">
+							<div class="mb-4 text-sm font-semibold text-gray-900">Payment Details</div>
+							<div class="grid gap-4 md:grid-cols-2">
+								<div>
+									<label class="mb-1 block text-sm font-medium text-gray-700">Amount Paid</label>
+									<input type="number" min="0.01" step="0.01" class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="paymentForm.amountPaid" (input)="updatePaymentField('amountPaid', $any($event.target).value)" [disabled]="isSubmitting" required>
+								</div>
+								<div>
+									<label class="mb-1 block text-sm font-medium text-gray-700">Invoice</label>
+									<select class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="paymentForm.invoiceId" (change)="updatePaymentField('invoiceId', $any($event.target).value)" [disabled]="isSubmitting">
+										<option value="">No invoice</option>
+										@for (invoice of getAvailableInvoices(); track invoice.id) {
+											<option [value]="invoice.id">INV-{{ invoice.id }}</option>
+										}
+									</select>
+								</div>
+								<div>
+									<label class="mb-1 block text-sm font-medium text-gray-700">Mode of Payment</label>
+									<input class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="paymentForm.modeOfPayment" (input)="updatePaymentField('modeOfPayment', $any($event.target).value)" [disabled]="isSubmitting" placeholder="Cash, GCash, Card" required>
+								</div>
+								<div>
+									<label class="mb-1 block text-sm font-medium text-gray-700">Payment Date</label>
+									<input type="date" class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="paymentForm.paymentDate" (input)="updatePaymentField('paymentDate', $any($event.target).value)" [disabled]="isSubmitting">
+								</div>
+								<div>
+									<label class="mb-1 block text-sm font-medium text-gray-700">Reference No.</label>
+									<input class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="paymentForm.referenceNumber" (input)="updatePaymentField('referenceNumber', $any($event.target).value)" [disabled]="isSubmitting" placeholder="Optional reference number">
+								</div>
+								<div>
+									<label class="mb-1 block text-sm font-medium text-gray-700">Received By</label>
+									<input class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm dark:border-gray-700" [value]="paymentForm.receivedBy" (input)="updatePaymentField('receivedBy', $any($event.target).value)" [disabled]="isSubmitting" placeholder="Cashier name">
+								</div>
+								<div class="md:col-span-2">
+									<label class="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+									<textarea class="min-h-24 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700" [value]="paymentForm.notes" (input)="updatePaymentField('notes', $any($event.target).value)" [disabled]="isSubmitting" placeholder="Optional cashier notes"></textarea>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-gray-800">
+						<button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button>
+						<button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" [disabled]="!getSelectedJobOrder() || isSubmitting">{{ isSubmitting ? 'Completing...' : 'Complete JO' }}</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	}
+
+	@if (receiptJobOrder) {
+		<div class="fixed inset-0 app-layer bg-gray-900/60 p-4" [class.opacity-0]="!showReceiptPreview" [class.pointer-events-none]="!showReceiptPreview" [class.-z-10]="!showReceiptPreview" (click)="closeReceiptPreview()">
+			<div class="receipt-print-shell mx-auto flex h-full w-full max-w-7xl flex-col bg-white p-4 text-black shadow-2xl" (click)="$event.stopPropagation()">
+				<div class="no-print mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">
+					<div>
+						<h3 class="text-lg font-semibold">Job Order Receipt Preview</h3>
+						<p class="text-sm text-gray-500">Screen-fitted document preview styled to feel like a PDF viewer.</p>
+					</div>
+					<div class="flex flex-wrap items-center gap-2">
+						<div class="rounded-full border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600">Zoom {{ getReceiptPreviewZoomLabel() }}</div>
+						<button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closeReceiptPreview()">Close</button>
+						<button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="printReceipt()" [disabled]="isGeneratingPdf">
+							{{ isGeneratingPdf ? 'Generating PDF...' : 'Open PDF Receipt' }}
+						</button>
+					</div>
 				</div>
 
-				<div class="mt-5 flex justify-end gap-2">
-					<button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button>
-					<button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" [disabled]="jobOrders.length === 0 || isSubmitting">{{ isSubmitting ? 'Processing...' : 'Checkout' }}</button>
+				<div class="receipt-preview-viewport flex-1 overflow-auto p-4">
+					<div class="mx-auto flex min-h-full items-start justify-center">
+						<div class="receipt-preview-stage p-4 shadow-inner">
+							<div class="overflow-hidden border border-gray-300 bg-white shadow-[0_20px_48px_rgba(15,23,42,0.22)]" [style.width.px]="getReceiptPreviewFrameWidth()" [style.height.px]="getReceiptPreviewFrameHeight()">
+								<div class="origin-top-left" [style.transform]="'scale(' + receiptPreviewScale + ')'" [style.width.px]="912">
+									<div id="receipt-pdf-source" class="receipt-sheet mx-auto border border-black bg-white text-[9px] leading-tight">
+										<div class="px-4 pt-3 text-center">
+											<div class="text-xl font-extrabold tracking-wide">CAR EXPERT AUTO CARE CENTER CORP.</div>
+											<div class="mt-1 text-[11px] font-semibold">PTT Talavera, Brgy. La Torre, Maharlika Highway, Talavera, Nueva Ecija</div>
+											<div class="mt-1 text-[11px]">Contact Number: 09178884958</div>
+										</div>
+
+										<div class="mt-2 flex items-center justify-between border-y border-black bg-black px-4 py-1 text-white">
+											<div class="w-24"></div>
+											<div class="text-lg font-bold tracking-wide">JOB ORDER</div>
+											<div class="text-right text-base font-bold">NO.{{ receiptJobOrder.id }}</div>
+										</div>
+
+										<div class="receipt-meta-grid grid grid-cols-2 gap-x-4 gap-y-1 px-4 py-2 text-[9px]">
+											<div><span class="font-semibold">Customer's Name:</span> {{ getCustomerName(receiptJobOrder) }}</div>
+											<div><span class="font-semibold">Date:</span> {{ getReceiptDate(receiptJobOrder) }}</div>
+											<div><span class="font-semibold">Address:</span> {{ getCustomerAddress(receiptJobOrder) }}</div>
+											<div><span class="font-semibold">Vehicle Model:</span> {{ getVehicleModel(receiptJobOrder) }}</div>
+											<div><span class="font-semibold">Mobile Number:</span> {{ getCustomerMobile(receiptJobOrder) }}</div>
+											<div><span class="font-semibold">Plate Number:</span> {{ getPlateNumber(receiptJobOrder) }}</div>
+											<div><span class="font-semibold">Mode of Payment:</span> {{ getModeOfPayment(receiptJobOrder) }}</div>
+											<div><span class="font-semibold">Kilometer Reading:</span> {{ getOdometer(receiptJobOrder) }}</div>
+										</div>
+
+										<div class="grid h-[3.72in] grid-cols-[1fr_2.2fr_1.4fr] border-t border-black">
+											<div class="col-span-2 border-r border-black">
+												<div class="border-b border-black bg-black px-2 py-1 text-center text-sm font-bold text-white">PARTS, TIRES AND SUPPLIES</div>
+												<table class="w-full border-collapse text-[9px]">
+													<thead>
+														<tr>
+															<th class="border-b border-r border-black px-2 py-1 text-left">ITEM CODE</th>
+															<th class="border-b border-r border-black px-2 py-1 text-left">PARTS DESCRIPTION</th>
+															<th class="border-b border-r border-black px-2 py-1 text-center">QUANTITY</th>
+															<th class="border-b border-black px-2 py-1 text-right">AMOUNT</th>
+														</tr>
+													</thead>
+													<tbody>
+														@for (row of getReceiptRows(receiptJobOrder); track $index) {
+															<tr>
+																<td class="h-4 border-b border-r border-black px-2 py-1">{{ row.code }}</td>
+																<td class="border-b border-r border-black px-2 py-1">{{ row.description }}</td>
+																<td class="border-b border-r border-black px-2 py-1 text-center">{{ row.quantity }}</td>
+																<td class="border-b border-black px-2 py-1 text-right">{{ row.amount }}</td>
+															</tr>
+														}
+													</tbody>
+												</table>
+
+												<table class="w-full border-collapse text-[9px]">
+													<tbody>
+														<tr>
+															<td class="border-r border-black px-2 py-1 font-bold">TOTAL</td>
+															<td class="px-2 py-1 text-right">{{ formatCurrencyValue(getJobOrderPartsTotal(receiptJobOrder)) }}</td>
+														</tr>
+														<tr>
+															<td class="border-r border-black px-2 py-1 font-bold">LABOR</td>
+															<td class="px-2 py-1 text-right">{{ formatCurrencyValue(getJobOrderLaborAmount(receiptJobOrder)) }}</td>
+														</tr>
+														<tr>
+															<td class="border-r border-black px-2 py-1 font-bold">GRAND TOTAL</td>
+															<td class="px-2 py-1 text-right font-bold">{{ formatCurrencyValue(getJobOrderTotal(receiptJobOrder)) }}</td>
+														</tr>
+														<tr>
+															<td class="border-t border-r border-black px-2 py-1 font-bold">REMARKS</td>
+															<td class="border-t border-black px-2 py-1">{{ receiptJobOrder.serviceRemarks || '-' }}</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+
+											<div class="receipt-side-panel px-2 py-1.5">
+												<div class="border-b border-black pb-2 text-center font-bold">WARRANTY:</div>
+												<p>15 days or 500km (whichever comes first). No warranty will be given for parts supplied by customer.</p>
+												<div class="font-bold">PARTS SUPPLIES BY:</div>
+												<div>({{ getSupplyProviderMark(receiptJobOrder, 'car_expert') }}) CAR EXPERT</div>
+												<div>({{ getSupplyProviderMark(receiptJobOrder, 'customer') }}) CUSTOMER</div>
+												<p class="text-center leading-tight font-semibold">I authorized and agree to pay for repair and work to be done on my vehicle including all parts and materials necessary to perform them.</p>
+												<div class="text-center font-bold">Customer's Signature</div>
+												@if (getCustomerSignatureForAuthorization(receiptJobOrder)) {
+													<div class="receipt-signature-slot"><img [src]="getCustomerSignatureForAuthorization(receiptJobOrder)" alt="Customer signature"></div>
+													<div class="receipt-line"></div>
+												} @else {
+													<div class="receipt-signature-slot"></div>
+													<div class="receipt-line"></div>
+												}
+												<div class="flex justify-between font-bold">
+													<span>TIME IN {{ getTimeIn(receiptJobOrder) }}</span>
+													<span>TIME OUT {{ getTimeOut(receiptJobOrder) }}</span>
+												</div>
+												<div class="font-bold">RELEASED BY: {{ getReleasedBy(receiptJobOrder) }} ( ) DCT</div>
+												<p class="text-center leading-tight font-semibold">NOTE: This job is based on our inspection but does not include defects not evident at the time of our inspection.</p>
+												<div class="text-center font-bold">Mechanic Signature</div>
+												@if (getMechanicSignature(receiptJobOrder)) {
+													<div class="receipt-signature-slot"><img [src]="getMechanicSignature(receiptJobOrder)" alt="Mechanic signature"></div>
+													<div class="receipt-line"></div>
+												} @else {
+													<div class="receipt-signature-slot"></div>
+													<div class="receipt-line"></div>
+												}
+												<p class="text-center leading-tight font-semibold">I hereby received above vehicle in good order and condition, I hereby certify that the repairs have been made to my entire satisfaction.</p>
+												<div class="text-center font-bold">Customer's Signature</div>
+												@if (getCustomerSignatureForRelease(receiptJobOrder)) {
+													<div class="receipt-signature-slot"><img [src]="getCustomerSignatureForRelease(receiptJobOrder)" alt="Customer release signature"></div>
+													<div class="receipt-line"></div>
+												} @else {
+													<div class="receipt-signature-slot"></div>
+													<div class="receipt-line"></div>
+												}
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
 				</div>
-			</form>
+			</div>
+		</div>
+	}
+
+	@if (showEmbeddedPdfViewer && embeddedPdfSafeUrl) {
+		<div class="fixed inset-0 app-layer bg-black/70 p-4" (click)="closeEmbeddedPdfViewer()">
+			<div class="mx-auto flex h-full w-full max-w-7xl flex-col bg-white shadow-2xl" (click)="$event.stopPropagation()">
+				<div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+					<h3 class="text-base font-semibold text-gray-900">Receipt PDF Viewer</h3>
+					<div class="flex items-center gap-2">
+						@if (embeddedPdfUrl) {
+							<a class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700" [href]="embeddedPdfUrl" download="job-order-receipt.pdf">Download</a>
+						}
+						<button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700" (click)="closeEmbeddedPdfViewer()">Close</button>
+					</div>
+				</div>
+
+				<div class="flex-1 bg-gray-100 p-2">
+					<iframe class="h-full w-full border-0 bg-white" [src]="embeddedPdfSafeUrl" title="Receipt PDF"></iframe>
+				</div>
+			</div>
 		</div>
 	}
 </div>

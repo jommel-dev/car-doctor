@@ -1,68 +1,299 @@
-<div class="space-y-6">
-  <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Customer Management</h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Live customer records from API.</p>
+<div class="h-screen flex flex-col">
+  <!-- Header -->
+  <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+    <h1 class="text-2xl font-semibold text-gray-800">Customer Management</h1>
+    <div class="flex items-center gap-4">
+      <!-- Search -->
+      <div class="relative">
+        <input
+          type="text"
+          class="w-64 h-10 pl-10 pr-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+          placeholder="Search customers, vehicles..."
+          [(ngModel)]="searchQuery"
+          (input)="onSearchChange()"
+        >
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
       </div>
+
+      <!-- View Toggle -->
       <div class="flex items-center gap-2">
-        <button class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="openDrawer()">Quick View</button>
-        <button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openModal()">Add Customer</button>
+        <button
+          class="p-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+          [class.bg-brand-500]="viewMode === 'list'"
+          [class.text-white]="viewMode === 'list'"
+          (click)="viewMode = 'list'"
+        >
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+          </svg>
+        </button>
+        <button
+          class="p-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+          [class.bg-brand-500]="viewMode === 'tree'"
+          [class.text-white]="viewMode === 'tree'"
+          (click)="viewMode = 'tree'"
+        >
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v0M8 5a2 2 0 012-2h4a2 2 0 012 2v0"></path>
+          </svg>
+        </button>
+      </div>
+
+      <button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openModal()">+ Add Customer</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Left Sidebar - Customer List -->
+    <div class="w-80 border-r border-gray-200 bg-gray-50 overflow-y-auto">
+      <div class="p-4">
+        <h3 class="text-lg font-medium text-gray-800 mb-4">Customers</h3>
+
+        @if (viewMode === 'list') {
+          <!-- List View -->
+          <div class="space-y-2">
+            @for (customer of filteredCustomers; track customer.id) {
+              <div
+                class="p-3 rounded-lg border cursor-pointer transition-colors"
+                [class.bg-white]="selectedCustomer?.id !== customer.id"
+                [class.border-gray-200]="selectedCustomer?.id !== customer.id"
+                [class.bg-brand-50]="selectedCustomer?.id === customer.id"
+                [class.border-brand-300]="selectedCustomer?.id === customer.id"
+                (click)="selectCustomer(customer)"
+              >
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-medium text-gray-800">{{ customer.name }}</div>
+                    <div class="text-sm text-gray-500">{{ customer.contact }}</div>
+                    <div class="text-xs text-gray-400">{{ customer.vehicles?.length || 0 }} vehicles</div>
+                  </div>
+                  @if (selectedCustomer?.id === customer.id) {
+                    <svg class="h-5 w-5 text-brand-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <!-- Tree View -->
+          <div class="space-y-1">
+            @for (customer of filteredCustomers; track customer.id) {
+              <div>
+                <div
+                  class="flex items-center p-2 rounded-lg cursor-pointer hover:bg-white"
+                  [class.bg-white]="selectedCustomer?.id === customer.id"
+                  (click)="selectCustomer(customer)"
+                >
+                  <svg class="h-4 w-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                  </svg>
+                  <span class="text-sm font-medium">{{ customer.name }}</span>
+                </div>
+
+                @if (selectedCustomer?.id === customer.id && customer.vehicles?.length) {
+                  <div class="ml-6 space-y-1">
+                    @for (vehicle of customer.vehicles; track vehicle.id) {
+                      <div
+                        class="flex items-center p-2 rounded-lg cursor-pointer hover:bg-white text-sm"
+                        [class.bg-brand-50]="selectedVehicle?.id === vehicle.id"
+                        (click)="selectVehicle(vehicle)"
+                      >
+                        <svg class="h-3 w-3 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <span>{{ vehicle.plateNumber }} - {{ vehicle.make }} {{ vehicle.model }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        @if (filteredCustomers.length === 0 && !isLoading) {
+          <div class="text-center py-8 text-gray-500">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            <p class="mt-2 text-sm">No customers found</p>
+          </div>
+        }
       </div>
     </div>
-  </div>
 
-  @if (errorMessage) {
-    <div class="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600">{{ errorMessage }}</div>
-  }
+    <!-- Right Content Area -->
+    <div class="flex-1 overflow-y-auto">
+      @if (!selectedCustomer) {
+        <!-- Default state -->
+        <div class="flex items-center justify-center h-full text-gray-500">
+          <div class="text-center">
+            <svg class="mx-auto h-24 w-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            <p class="mt-4 text-lg">Select a customer to view details</p>
+          </div>
+        </div>
+      } @else if (!selectedVehicle) {
+        <!-- Customer vehicles list -->
+        <div class="p-6">
+          <div class="mb-6">
+            <h2 class="text-2xl font-semibold text-gray-800">{{ selectedCustomer.name }}</h2>
+            <div class="mt-2 grid grid-cols-2 gap-4 text-sm text-gray-600">
+              <div><strong>Contact:</strong> {{ selectedCustomer.contact }}</div>
+              <div><strong>Email:</strong> {{ selectedCustomer.email || 'Not provided' }}</div>
+              <div class="col-span-2"><strong>Address:</strong> {{ selectedCustomer.address || 'Not provided' }}</div>
+            </div>
+          </div>
 
-  <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-    <div class="overflow-x-auto">
-      <table class="min-w-full text-left text-sm">
-        <thead class="border-b border-gray-200 text-xs text-gray-500 dark:border-gray-800">
-          <tr><th class="px-6 py-3">Name</th><th class="px-6 py-3">Contact</th><th class="px-6 py-3">Created</th></tr>
-        </thead>
-        <tbody>
-          @if (isLoading) {
-            <tr><td colspan="3" class="px-6 py-4 text-gray-500">Loading...</td></tr>
-          } @else if (customers.length === 0) {
-            <tr><td colspan="3" class="px-6 py-4 text-gray-500">No customers found.</td></tr>
-          } @else {
-            @for (customer of customers; track customer.id) {
-              <tr class="border-b border-gray-100 dark:border-gray-800/60">
-                <td class="px-6 py-3 text-gray-800 dark:text-white/90">{{ customer.name }}</td>
-                <td class="px-6 py-3 text-gray-500">{{ customer.contactInfo || '-' }}</td>
-                <td class="px-6 py-3 text-gray-500">{{ customer.createdAt || '-' }}</td>
-              </tr>
+          <div>
+            <h3 class="text-lg font-medium text-gray-800 mb-4">Vehicles ({{ selectedCustomer.vehicles?.length || 0 }})</h3>
+
+            @if (selectedCustomer.vehicles?.length) {
+              <div class="grid gap-4 md:grid-cols-2">
+                @for (vehicle of selectedCustomer.vehicles; track vehicle.id) {
+                  <div
+                    class="p-4 border border-gray-200 rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                    (click)="selectVehicle(vehicle)"
+                  >
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-medium text-gray-800">{{ vehicle.plateNumber }}</h4>
+                      <span class="text-xs bg-gray-100 px-2 py-1 rounded">{{ vehicle.make }} {{ vehicle.model }}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 space-y-1">
+                      <div><strong>Engine:</strong> {{ vehicle.engineType || 'Not specified' }}</div>
+                      <div><strong>Odometer:</strong> {{ vehicle.odometerReading ? vehicle.odometerReading + ' km' : 'Not specified' }}</div>
+                      <div><strong>Fuel:</strong> {{ vehicle.fuelType || 'Not specified' }}</div>
+                      <div><strong>Warranty:</strong> {{ vehicle.warrantyStatus || 'Not specified' }}</div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="text-center py-8 text-gray-500">
+                <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <p class="mt-2">No vehicles registered</p>
+              </div>
             }
-          }
-        </tbody>
-      </table>
+          </div>
+        </div>
+      } @else {
+        <!-- Vehicle details -->
+        <div class="p-6">
+          <div class="mb-6">
+            <button class="text-brand-500 hover:text-brand-600 mb-4" (click)="selectedVehicle = null">
+              ← Back to vehicles
+            </button>
+            <h2 class="text-2xl font-semibold text-gray-800">{{ selectedVehicle.plateNumber }}</h2>
+            <p class="text-gray-600">{{ selectedVehicle.make }} {{ selectedVehicle.model }}</p>
+          </div>
+
+          <div class="grid gap-6 md:grid-cols-2">
+            <!-- Vehicle Details -->
+            <div class="space-y-4">
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 class="font-medium text-gray-800 mb-3">Vehicle Information</h3>
+                <div class="grid gap-3 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Engine Type:</span>
+                    <span class="font-medium">{{ selectedVehicle.engineType || 'Not specified' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Odometer:</span>
+                    <span class="font-medium">{{ selectedVehicle.odometerReading ? selectedVehicle.odometerReading + ' km' : 'Not specified' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Fuel Type:</span>
+                    <span class="font-medium">{{ selectedVehicle.fuelType || 'Not specified' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Warranty Status:</span>
+                    <span class="font-medium">{{ selectedVehicle.warrantyStatus || 'Not specified' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Milestones -->
+              @if (selectedVehicle.milestones.length) {
+                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                  <h3 class="font-medium text-gray-800 mb-3">Maintenance Milestones</h3>
+                  <div class="space-y-3">
+                    @for (milestone of selectedVehicle.milestones; track milestone.id) {
+                      <div class="border border-gray-100 rounded p-3">
+                        <div class="font-medium text-sm text-gray-800">{{ milestone.milestone }}</div>
+                        <div class="text-xs text-gray-600 mt-1">{{ milestone.tasks }}</div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Service History -->
+            <div class="space-y-4">
+              <div class="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 class="font-medium text-gray-800 mb-3">Service History</h3>
+                @if (selectedVehicle.jobOrders.length) {
+                  <div class="space-y-3">
+                    @for (jobOrder of selectedVehicle.jobOrders.slice(0, 5); track jobOrder.id) {
+                      <div class="border border-gray-100 rounded p-3">
+                        <div class="flex justify-between items-start mb-2">
+                          <span class="text-sm font-medium">{{ jobOrder.description }}</span>
+                          <span class="text-xs px-2 py-1 rounded" [class]="'text-xs px-2 py-1 rounded ' + getStatusClass(jobOrder.status)">
+                            {{ jobOrder.status }}
+                          </span>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          {{ jobOrder.created_at | date:'short' }}
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="text-gray-500 text-sm">No service history available</p>
+                }
+              </div>
+
+              <!-- Previous Service Documentation -->
+              @if (selectedVehicle.previousServiceDocs) {
+                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                  <h3 class="font-medium text-gray-800 mb-3">Previous Service Documentation</h3>
+                  <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ selectedVehicle.previousServiceDocs }}</div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
     </div>
   </div>
-
-  @if (showModal) {
-    <div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()">
-      <form class="w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-gray-900" (submit)="createCustomer($event)" (click)="$event.stopPropagation()">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Create Customer</h3>
-        <div class="mt-4 grid gap-3">
-          <input name="name" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Full name" required>
-          <input name="contactInfo" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Contact number or email">
-        </div>
-        <div class="mt-5 flex justify-end gap-2">
-          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button>
-          <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">Save</button>
-        </div>
-      </form>
-    </div>
-  }
-
-  @if (showDrawer) {
-    <div class="fixed inset-0 app-layer bg-gray-900/40" (click)="closePanels()"></div>
-    <aside class="fixed right-0 top-0 app-layer h-full w-full max-w-md border-l border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Customer Quick View</h3>
-      <p class="mt-3 text-sm text-gray-500">Total records: {{ customers.length }}</p>
-      <button class="mt-6 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Close</button>
-    </aside>
-  }
 </div>
+
+<!-- Add Customer Modal -->
+@if (showModal) {
+  <div class="fixed inset-0 app-layer flex items-center justify-center bg-gray-900/50 p-4" (click)="closePanels()">
+    <form class="w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-gray-900" (submit)="createCustomer($event)" (click)="$event.stopPropagation()">
+      <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Create Customer</h3>
+      <div class="mt-4 grid gap-3">
+        <input name="name" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Full name" required>
+        <input name="contact" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Contact number" required>
+        <input name="email" type="email" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Email address">
+        <input name="address" class="h-11 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" placeholder="Address">
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm" (click)="closePanels()">Cancel</button>
+        <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">Create Customer</button>
+      </div>
+    </form>
+  </div>
+}

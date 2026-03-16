@@ -1,0 +1,175 @@
+<div class="space-y-6">
+  <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Quotation / Estimation</h2>
+      <button class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="openDrawer()">New Estimation</button>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <div class="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-600">{{ errorMessage }}</div>
+  }
+
+  <div class="rounded-2xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-white/[0.03]">
+    <table class="min-w-full text-sm">
+      <thead class="text-left text-xs text-gray-500">
+        <tr>
+          <th class="px-4 py-3">Created</th>
+          <th class="px-4 py-3">Customer</th>
+          <th class="px-4 py-3">Vehicle</th>
+          <th class="px-4 py-3">Concern</th>
+          <th class="px-4 py-3 text-right">Total Estimate</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (isLoading) {
+          <tr><td colspan="7" class="px-4 py-4">Loading...</td></tr>
+        } @else if (quotations.length === 0) {
+          <tr><td colspan="7" class="px-4 py-4">No quotations yet.</td></tr>
+        } @else {
+          @for (quotation of quotations; track quotation.id) {
+            <tr class="border-t border-gray-100 dark:border-gray-800">
+              <td class="px-4 py-3">{{ quotation.createdAt | date:'short' }}</td>
+              <td class="px-4 py-3">{{ quotation.customerName }}</td>
+              <td class="px-4 py-3">{{ quotation.vehicleLabel }}</td>
+              <td class="px-4 py-3">{{ quotation.concern }}</td>
+              <td class="px-4 py-3 text-right font-medium">{{ formatCurrency(quotation.totalAmount) }}</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex rounded-full border px-2 py-1 text-xs font-medium" [class]="'inline-flex rounded-full border px-2 py-1 text-xs font-medium ' + getStatusClass(quotation.status)">{{ quotation.status }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" class="rounded-lg border border-gray-300 px-3 py-1 text-xs" (click)="viewQuotation(quotation)">View</button>
+                  @if (quotation.status === 'DRAFT') {
+                    <button type="button" class="rounded-lg border border-brand-500 px-3 py-1 text-xs text-brand-600" (click)="markPresented(quotation)">Mark Presented</button>
+                  }
+                  @if (quotation.status === 'PRESENTED') {
+                    <button type="button" class="rounded-lg bg-success-600 px-3 py-1 text-xs text-white" (click)="markApproved(quotation)">Mark Approved</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (showDrawer) {
+    <div class="fixed inset-0 app-layer bg-gray-900/50" (click)="closeDrawer()">
+      <div class="ml-auto h-full w-full max-w-4xl bg-white p-6 dark:bg-gray-900 overflow-y-auto shadow-2xl" (click)="$event.stopPropagation()">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Create Service Estimation</h3>
+          <button type="button" class="rounded-lg border border-gray-300 px-3 py-1 text-xs" (click)="closeDrawer()">Close</button>
+        </div>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Customer</label>
+            <select class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm" [(ngModel)]="draft.customerId" [ngModelOptions]="{standalone: true}">
+              @for (customer of customers; track customer.id) {
+                <option [ngValue]="customer.id">{{ customer.name }}</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Vehicle</label>
+            <select class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm" [(ngModel)]="draft.vehicleId" [ngModelOptions]="{standalone: true}">
+              @for (vehicle of vehicles; track vehicle.id) {
+                <option [ngValue]="vehicle.id">{{ vehicle.plateNumber || vehicle.plate_number }} - {{ vehicle.make }} {{ vehicle.model }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="mb-1 block text-sm font-medium text-gray-700">Service Concern / Request</label>
+            <textarea class="min-h-24 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" [(ngModel)]="draft.concern" [ngModelOptions]="{standalone: true}" placeholder="Describe requested service"></textarea>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">Labor Estimate</label>
+            <input type="number" step="0.01" class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm" [(ngModel)]="draft.laborAmount" [ngModelOptions]="{standalone: true}" placeholder="0.00">
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+          <div class="mb-3 flex items-center justify-between">
+            <h4 class="font-medium">Estimated Parts & Supplies</h4>
+            <button type="button" class="rounded-lg bg-gray-500 px-3 py-1 text-xs text-white" (click)="addItem()">+ Add Item</button>
+          </div>
+
+          <div class="space-y-2">
+            @for (item of draft.items; track $index; let i = $index) {
+              <div class="grid grid-cols-12 gap-2">
+                <input class="col-span-6 h-10 rounded-lg border border-gray-300 px-3 text-sm" placeholder="Item description" [(ngModel)]="item.description" [ngModelOptions]="{standalone: true}">
+                <input type="number" min="1" class="col-span-2 h-10 rounded-lg border border-gray-300 px-3 text-sm" placeholder="Qty" [(ngModel)]="item.quantity" [ngModelOptions]="{standalone: true}">
+                <input type="number" step="0.01" class="col-span-3 h-10 rounded-lg border border-gray-300 px-3 text-sm" placeholder="Unit price" [(ngModel)]="item.unitPrice" [ngModelOptions]="{standalone: true}">
+                <button type="button" class="col-span-1 rounded-lg border border-gray-300 px-2 text-xs" (click)="removeItem(i)">X</button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+          <button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white" (click)="createQuotation()">Generate Estimation Report</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (selectedQuotation) {
+    <div class="fixed inset-0 app-layer bg-gray-900/50" (click)="closePreview()">
+      <div class="mx-auto mt-10 w-full max-w-3xl rounded-2xl bg-white p-6 dark:bg-gray-900" (click)="$event.stopPropagation()">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Estimation Report</h3>
+          <button type="button" class="rounded-lg border border-gray-300 px-3 py-1 text-xs" (click)="closePreview()">Close</button>
+        </div>
+
+        <div class="mt-4 grid gap-2 text-sm">
+          <div><strong>Customer:</strong> {{ selectedQuotation.customerName }}</div>
+          <div><strong>Vehicle:</strong> {{ selectedQuotation.vehicleLabel }}</div>
+          <div><strong>Concern:</strong> {{ selectedQuotation.concern }}</div>
+          <div><strong>Status:</strong> {{ selectedQuotation.status }}</div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs text-gray-500 dark:bg-gray-800/60">
+              <tr>
+                <th class="px-3 py-2">Item</th>
+                <th class="px-3 py-2 text-right">Qty</th>
+                <th class="px-3 py-2 text-right">Price</th>
+                <th class="px-3 py-2 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t border-gray-100 dark:border-gray-800">
+                <td class="px-3 py-2">Labor Estimate</td>
+                <td class="px-3 py-2 text-right">1</td>
+                <td class="px-3 py-2 text-right">{{ formatCurrency(selectedQuotation.laborAmount) }}</td>
+                <td class="px-3 py-2 text-right">{{ formatCurrency(selectedQuotation.laborAmount) }}</td>
+              </tr>
+              @for (item of selectedQuotation.items; track $index) {
+                <tr class="border-t border-gray-100 dark:border-gray-800">
+                  <td class="px-3 py-2">{{ item.description }}</td>
+                  <td class="px-3 py-2 text-right">{{ item.quantity }}</td>
+                  <td class="px-3 py-2 text-right">{{ formatCurrency(item.unitPrice) }}</td>
+                  <td class="px-3 py-2 text-right">{{ formatCurrency(item.quantity * item.unitPrice) }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="border-t border-gray-200 font-semibold dark:border-gray-700">
+                <td colspan="3" class="px-3 py-2 text-right">Total Estimate</td>
+                <td class="px-3 py-2 text-right">{{ formatCurrency(selectedQuotation.totalAmount) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+</div>

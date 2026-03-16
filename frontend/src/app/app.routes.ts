@@ -35,6 +35,7 @@ import { ExpenseRecordingComponent } from './pages/expense-recording/expense-rec
 import { AccountsPayableComponent } from './pages/accounts-payable/accounts-payable.component';
 import { ReportingComponent } from './pages/reporting/reporting.component';
 import { SecurityAccessComponent } from './pages/security-access/security-access.component';
+import { QuotationComponent } from './pages/quotation/quotation.component';
 
 export const routes: Routes = [
   {
@@ -89,6 +90,11 @@ export const routes: Routes = [
         title: 'Car Doctor | Job Orders',
       },
       {
+        path: 'quotation',
+        component: QuotationComponent,
+        title: 'Car Doctor | Quotation',
+      },
+      {
         path: 'service-history',
         component: ServiceHistoryComponent,
         title: 'Car Doctor | Service History',
@@ -96,6 +102,11 @@ export const routes: Routes = [
       {
         path: 'inventory-management',
         component: InventoryManagementComponent,
+        canActivate: [rbacGuard],
+        data: {
+          menu: 'inventory',
+          permission: 'canRead',
+        },
         title: 'Car Doctor | Inventory Management',
       },
       {
@@ -136,24 +147,28 @@ export const routes: Routes = [
       {
         path: 'security-access',
         component: SecurityAccessComponent,
+        canActivate: [rbacGuard],
+        data: {
+          menu: 'security',
+          permission: 'canRead',
+        },
         title: 'Car Doctor | Security and Access Control',
       },
       {
         path: 'inventory',
-        component: BlankComponent,
+        component: InventoryManagementComponent,
         canActivate: [rbacGuard],
         data: {
           menu: 'inventory',
           permission: 'canRead',
         },
-        title: 'Air Summit Aircon Services | Inventory',
+        title: 'Car Doctor | Inventory',
       },
       {
         path: 'user-management',
         component: UserManagementComponent,
-        canActivate: [rbacGuard],
         data: {
-          menu: 'user_management',
+          menu: 'user-management',
           permission: 'canRead',
         },
         title: 'Car Doctor | User Management',

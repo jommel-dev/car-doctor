@@ -7,13 +7,13 @@ export class ReportingService {
 
   async getSummary() {
     const [sales, inventory, services, expenses, receivables, payables, technicians] = await Promise.all([
-      this.prisma.sale.aggregate({ _sum: { amount: true }, _count: true }),
-      this.prisma.inventory.findMany({ orderBy: { stockQty: 'asc' } }),
-      this.prisma.serviceHistory.count(),
-      this.prisma.expense.aggregate({ _sum: { amount: true }, _count: true }),
-      this.prisma.accountReceivable.findMany({ include: { customer: true, invoice: true } }),
-      this.prisma.accountPayable.findMany({ include: { supplier: true, purchase: true } }),
-      this.prisma.technician.findMany(),
+      this.prisma.tblsales.aggregate({ _sum: { amount: true }, _count: true }),
+      this.prisma.tblinventory.findMany({ orderBy: { stockQty: 'asc' } }),
+      this.prisma.tblservice_history.count(),
+      this.prisma.tblexpenses.aggregate({ _sum: { amount: true }, _count: true }),
+      this.prisma.tblaccounts_receivable.findMany({ include: { customer: true, invoice: true } }),
+      this.prisma.tblaccounts_payable.findMany({ include: { supplier: true, purchase: true } }),
+      this.prisma.tbltechnicians.findMany(),
     ]);
 
     return {
